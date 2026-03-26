@@ -5,6 +5,7 @@ import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
 import { MetricCard } from '@/components/channel/MetricCard'
+import { VideoTable } from '@/components/videos/VideoTable'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -106,22 +107,8 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         </div>
       </div>
 
-      {/* Video list placeholder — built in Step 14 */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <p className="text-sm font-medium mb-4" style={{ color: 'var(--text-secondary)' }}>
-          {videos.length} videos loaded
-        </p>
-        <div className="space-y-2">
-          {videos.slice(0, 5).map((v) => (
-            <div key={v.id} className="flex items-center gap-3 py-2 border-b border-[var(--border-subtle)]">
-              <span className="text-sm truncate flex-1">{v.title}</span>
-              <span className="text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                {v.viewCount.toLocaleString()} views
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Video Table */}
+      <VideoTable videos={videos} />
     </div>
   )
 }
