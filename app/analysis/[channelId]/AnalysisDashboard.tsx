@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ChannelHeader } from '@/components/channel/ChannelHeader'
+import { MetricCard } from '@/components/channel/MetricCard'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -62,55 +64,49 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      {/* Channel Header — built in Step 13 */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <div className="flex items-center gap-4">
-          {channel.thumbnailUrl && (
-            <img
-              src={channel.thumbnailUrl}
-              alt={channel.title}
-              className="h-16 w-16 rounded-full object-cover"
-            />
-          )}
-          <div>
-            <h1
-              className="text-2xl font-bold"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {channel.title}
-            </h1>
-            {channel.handle && (
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {channel.handle}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
+      <ChannelHeader channel={channel} />
 
-      {/* Metrics Row placeholder — built in Step 13 */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricPlaceholder label="Avg Views / Video" value={metrics.avgViews} />
-        <MetricPlaceholder label="Avg Engagement Rate" value={`${metrics.avgEngagementRate}%`} />
-        <MetricPlaceholder label="Upload Frequency" value={metrics.uploadFrequency} />
-        <MetricPlaceholder label="Views Last 30d" value={metrics.totalViewsLast30d} />
+        <MetricCard
+          label="Avg Views / Video"
+          value={metrics.avgViews}
+          trend={metrics.viewsGrowthPct}
+          trendLabel="vs prior"
+        />
+        <MetricCard
+          label="Avg Engagement Rate"
+          value={Math.round(metrics.avgEngagementRate * 100)}
+          format="percent"
+        />
+        <MetricCard
+          label="Upload Frequency"
+          value={0}
+          format="string"
+          stringValue={metrics.uploadFrequency}
+        />
+        <MetricCard
+          label="Views Last 30d"
+          value={metrics.totalViewsLast30d}
+          trend={metrics.viewsGrowthPct}
+        />
       </div>
 
       {/* Charts placeholder — built in Step 15 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Views chart — built in Step 15
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 min-h-[300px]">
+          <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
+            Views Over Time
           </p>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Engagement chart — built in Step 15
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 min-h-[300px]">
+          <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
+            Engagement Rate Trend
           </p>
         </div>
       </div>
 
-      {/* Video table placeholder — built in Step 14 */}
+      {/* Video list placeholder — built in Step 14 */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
         <p className="text-sm font-medium mb-4" style={{ color: 'var(--text-secondary)' }}>
           {videos.length} videos loaded
@@ -126,20 +122,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           ))}
         </div>
       </div>
-    </div>
-  )
-}
-
-function MetricPlaceholder({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</p>
-      <p
-        className="text-2xl font-bold mt-1 tabular-nums"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
-        {typeof value === 'number' ? value.toLocaleString() : value}
-      </p>
     </div>
   )
 }
