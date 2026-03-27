@@ -100,10 +100,17 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       }
 
       try {
-        const parsed: AIInsights = JSON.parse(accumulated)
+        // Strip markdown fences if present
+        let cleanText = accumulated.trim()
+        if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+        }
+        const parsed: AIInsights = JSON.parse(cleanText)
         setInsights(parsed)
         onInsightsLoaded?.(parsed)
-      } catch {
+      } catch (err) {
+        console.error('[AIInsightsPanel] JSON parse failed:', err)
+        console.error('[AIInsightsPanel] Raw text:', accumulated.slice(0, 200))
         setError(true)
       }
       setLoading(false)

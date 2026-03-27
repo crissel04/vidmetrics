@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = insightsBodySchema.safeParse(body)
     if (!parsed.success) {
+      console.error('[insights] Validation failed:', parsed.error.issues)
       return createErrorResponse(
         parsed.error.issues.map(e => e.message).join(', '),
         400
@@ -19,11 +20,19 @@ export async function POST(request: NextRequest) {
     }
 
     const { channelId, channelTitle, subscriberCount, videos, metrics } = parsed.data
+    console.log('[insights] Request for:', channelTitle, `(${channelId})`)
 
-    // 1. Check Redis cache first — return immediately if cached
-    const cached = await getCachedInsights(channelId)
-    if (cached) {
-      return NextResponse.json({ insights: cached })
+    // 1. Check Redis cache first
+    try {
+      const cached = await getCachedInsights(channelId)
+      if (cached) {
+        console.log('[insights] Cache hit for', channelId)
+        return NextResponse.json({ insights: cached })
+      }
+      console.log('[insights] Cache miss for', channelId)
+    } catch (cacheErr) {
+      console.error('[insights] Redis cache read failed:', cacheErr)
+      // Continue without cache
     }
 
     // 2. Build prompt
@@ -31,11 +40,11 @@ export async function POST(request: NextRequest) {
 
     // 3. Stream from Anthropic
     const encoder = new TextEncoder()
+    let fullText = ''
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          let fullText = ''
-
           const response = anthropic.messages.stream({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 1024,
@@ -52,17 +61,31 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // After stream completes, parse and cache the full JSON
+          console.log('[insights] Stream complete, length:', fullText.length)
+
+          // Strip markdown fences if present
+          let cleanText = fullText.trim()
+          if (cleanText.startsWith('```')) {
+            cleanText = cleanText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+          }
+
+          // Cache the parsed result
           try {
-            const insights = JSON.parse(fullText)
+            const insights = JSON.parse(cleanText)
             await setCachedInsights(channelId, insights)
-          } catch {
-            // JSON parse failed — stream ended but wasn't valid JSON
-            // Client handles this gracefully with retry
+            console.log('[insights] Cached successfully for', channelId)
+          } catch (parseErr) {
+            console.error('[insights] JSON parse failed after stream:', parseErr)
+            console.error('[insights] Raw text:', fullText.slice(0, 200))
           }
 
           controller.close()
         } catch (err) {
+          const error = err as { status?: number; message?: string }
+          console.error('[insights] Anthropic stream error:', {
+            status: error.status,
+            message: error.message,
+          })
           controller.error(err)
         }
       },

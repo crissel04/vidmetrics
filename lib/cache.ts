@@ -19,5 +19,5 @@ export async function getCachedInsights(channelId: string): Promise<AIInsights |
  * Key format: insights:{channelId}
  */
 export async function setCachedInsights(channelId: string, insights: AIInsights) {
-  return redis.setex(`insights:${channelId}`, 86400, JSON.stringify(insights))
+  return redis.setex(`insights:${channelId}`, 86400, insights)
 }
