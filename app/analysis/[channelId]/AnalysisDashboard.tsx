@@ -9,6 +9,7 @@ import { VideoTable } from '@/components/videos/VideoTable'
 import { ViewsChart } from '@/components/charts/ViewsChart'
 import { EngagementChart } from '@/components/charts/EngagementChart'
 import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
+import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -96,6 +97,12 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         />
       </div>
 
+      {/* Momentum Score */}
+      <MomentumScoreWidget
+        metrics={metrics}
+        uploadDayCounts={computeUploadDayCounts(videos)}
+      />
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ViewsChart videos={videos} />
@@ -109,6 +116,15 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       <VideoTable videos={videos} />
     </div>
   )
+}
+
+function computeUploadDayCounts(videos: Video[]): Record<number, number> {
+  const counts: Record<number, number> = {}
+  for (const v of videos) {
+    const day = (new Date(v.publishedAt).getUTCDay() + 6) % 7 // 0=Mon
+    counts[day] = (counts[day] ?? 0) + 1
+  }
+  return counts
 }
 
 function DashboardLoadingSkeleton() {
