@@ -6,6 +6,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
 import { MetricCard } from '@/components/channel/MetricCard'
 import { VideoTable } from '@/components/videos/VideoTable'
+import { ViewsChart } from '@/components/charts/ViewsChart'
+import { EngagementChart } from '@/components/charts/EngagementChart'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -93,18 +95,10 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         />
       </div>
 
-      {/* Charts placeholder — built in Step 15 */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 min-h-[300px]">
-          <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
-            Views Over Time
-          </p>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 min-h-[300px]">
-          <p className="text-sm font-medium" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}>
-            Engagement Rate Trend
-          </p>
-        </div>
+        <ViewsChart videos={videos} />
+        <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
       </div>
 
       {/* Video Table */}
