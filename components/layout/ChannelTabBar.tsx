@@ -9,18 +9,45 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
+import { useChannelTabs, type ChannelTab } from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 export function ChannelTabBar() {
-  const { tabs, addTab, removeTab } = useChannelTabs()
+  const { tabs, addTab, removeTab, reorderTabs } = useChannelTabs()
   const pathname = usePathname()
   const router = useRouter()
 
-  const handleRemove = (channelId: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  )
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = tabs.findIndex(t => t.channelId === active.id)
+    const newIndex = tabs.findIndex(t => t.channelId === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    reorderTabs(arrayMove(tabs, oldIndex, newIndex))
+  }
+
+  const handleRemove = (channelId: string) => {
     const isActive = pathname === `/analysis/${channelId}`
     removeTab(channelId)
 
@@ -39,68 +66,25 @@ export function ChannelTabBar() {
       className="flex items-center gap-0.5 overflow-x-auto px-1"
       style={{ scrollbarWidth: 'none' }}
     >
-      {tabs.map((tab) => {
-        const isActive = pathname === `/analysis/${tab.channelId}`
-
-        return (
-          <Link
-            key={tab.channelId}
-            href={`/analysis/${tab.channelId}`}
-            className="group flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150 relative"
-            style={{
-              background: isActive ? 'var(--bg-app)' : 'transparent',
-              color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-              borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'var(--bg-app)'
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            <Avatar className="h-5 w-5">
-              <AvatarImage src={tab.thumbnailUrl} alt={tab.title} />
-              <AvatarFallback
-                style={{
-                  background: 'var(--accent-subtle)',
-                  color: 'var(--accent-text)',
-                  fontSize: '8px',
-                }}
-              >
-                {tab.title.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="truncate max-w-[18ch]">
-              {tab.handle || tab.title}
-            </span>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <a
-                    href={`https://www.youtube.com/channel/${tab.channelId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                    style={{ color: 'var(--text-muted)' }}
-                  />
-                }
-              >
-                <ExternalLink size={11} />
-              </TooltipTrigger>
-              <TooltipContent>View on YouTube</TooltipContent>
-            </Tooltip>
-            <button
-              onClick={(e) => handleRemove(tab.channelId, e)}
-              className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <X size={12} />
-            </button>
-          </Link>
-        )
-      })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={tabs.map(t => t.channelId)}
+          strategy={horizontalListSortingStrategy}
+        >
+          {tabs.map((tab) => (
+            <SortableChannelTab
+              key={tab.channelId}
+              tab={tab}
+              isActive={pathname === `/analysis/${tab.channelId}`}
+              onRemove={handleRemove}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {/* Compare tab — only when 2+ tabs */}
       {tabs.length >= 2 && (
@@ -131,6 +115,105 @@ export function ChannelTabBar() {
           router.push(`/analysis/${tab.channelId}`)
         }}
       />
+    </div>
+  )
+}
+
+function SortableChannelTab({
+  tab,
+  isActive,
+  onRemove,
+}: {
+  tab: ChannelTab
+  isActive: boolean
+  onRemove: (channelId: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tab.channelId })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} className="shrink-0">
+      <div
+        className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150 relative"
+        style={{
+          background: isActive ? 'var(--bg-app)' : 'transparent',
+          color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+          borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+          cursor: isDragging ? 'grabbing' : 'grab',
+        }}
+        onMouseEnter={(e) => {
+          if (!isActive) e.currentTarget.style.background = 'var(--bg-app)'
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) e.currentTarget.style.background = 'transparent'
+        }}
+        {...listeners}
+      >
+        <Link
+          href={`/analysis/${tab.channelId}`}
+          className="flex items-center gap-1.5"
+          onClick={(e) => { if (isDragging) e.preventDefault() }}
+        >
+          <Avatar className="h-5 w-5">
+            <AvatarImage src={tab.thumbnailUrl} alt={tab.title} />
+            <AvatarFallback
+              style={{
+                background: 'var(--accent-subtle)',
+                color: 'var(--accent-text)',
+                fontSize: '8px',
+              }}
+            >
+              {tab.title.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="truncate max-w-[18ch]">
+            {tab.handle || tab.title}
+          </span>
+        </Link>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <a
+                href={`https://www.youtube.com/channel/${tab.channelId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                style={{ color: 'var(--text-muted)' }}
+              />
+            }
+          >
+            <ExternalLink size={11} />
+          </TooltipTrigger>
+          <TooltipContent>View on YouTube</TooltipContent>
+        </Tooltip>
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onRemove(tab.channelId)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <X size={12} />
+        </button>
+      </div>
     </div>
   )
 }

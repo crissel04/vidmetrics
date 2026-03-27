@@ -45,8 +45,14 @@ export function useChannelTabs() {
 
   const addTab = useCallback((tab: ChannelTab) => {
     const prev = readTabs()
-    const filtered = prev.filter((t) => t.channelId !== tab.channelId)
-    const next = [tab, ...filtered].slice(0, MAX_TABS)
+    const existingIndex = prev.findIndex(t => t.channelId === tab.channelId)
+    if (existingIndex !== -1) {
+      const updated = [...prev]
+      updated[existingIndex] = { ...updated[existingIndex], ...tab }
+      writeTabs(updated)
+      return
+    }
+    const next = [...prev, tab].slice(-MAX_TABS)
     writeTabs(next)
   }, [])
 
@@ -56,9 +62,13 @@ export function useChannelTabs() {
     writeTabs(next)
   }, [])
 
+  const reorderTabs = useCallback((newOrder: ChannelTab[]) => {
+    writeTabs(newOrder)
+  }, [])
+
   const clearTabs = useCallback(() => {
     writeTabs([])
   }, [])
 
-  return { tabs, addTab, removeTab, clearTabs }
+  return { tabs, addTab, removeTab, reorderTabs, clearTabs }
 }
