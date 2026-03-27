@@ -65,43 +65,43 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>
-        <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
-          <TooltipProvider delay={300}>
-            <SidebarProvider defaultOpen={sidebarOpen}>
-              <ChannelCacheProvider>
-              <RecentChannelsProvider>
-              <ReportsHistoryProvider>
-              <WatchlistProvider>
-              <SettingsProvider>
-              <SavedComparisonsProvider>
-              <AppSidebar />
-              <SidebarInset>
-                <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
-                  <SidebarTrigger className="-ml-1" />
-                  <Separator orientation="vertical" className="h-4" />
-                  <div className="flex-1 min-w-0">
-                    <HeaderBreadcrumb />
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <ThemeToggle />
-                    <UserButton />
-                  </div>
-                </header>
-                <main className="flex flex-1 flex-col gap-6 p-6">
-                  {children}
-                </main>
-              </SidebarInset>
-              <GlobalKeyboardShortcuts />
-              </SavedComparisonsProvider>
-              </SettingsProvider>
-              </WatchlistProvider>
-              </ReportsHistoryProvider>
-              </RecentChannelsProvider>
-              </ChannelCacheProvider>
-            </SidebarProvider>
-          </TooltipProvider>
-          <Toaster />
-        </ThemeProvider>
+          <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
+            <TooltipProvider delay={300}>
+              <SidebarProvider defaultOpen={sidebarOpen}>
+                <ChannelCacheProvider>
+                  <RecentChannelsProvider>
+                    <ReportsHistoryProvider>
+                      <WatchlistProvider>
+                        <SettingsProvider>
+                          <SavedComparisonsProvider>
+                            <AppSidebar />
+                            <SidebarInset>
+                              <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
+                                <SidebarTrigger className="-ml-1" />
+                                <Separator orientation="vertical" className="h-4" />
+                                <div className="flex-1 min-w-0">
+                                  <HeaderBreadcrumb />
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <ThemeToggle />
+                                  <UserButton />
+                                </div>
+                              </header>
+                              <main className="flex flex-1 flex-col gap-6 p-6">
+                                {children}
+                              </main>
+                            </SidebarInset>
+                            <GlobalKeyboardShortcuts />
+                          </SavedComparisonsProvider>
+                        </SettingsProvider>
+                      </WatchlistProvider>
+                    </ReportsHistoryProvider>
+                  </RecentChannelsProvider>
+                </ChannelCacheProvider>
+              </SidebarProvider>
+            </TooltipProvider>
+            <Toaster />
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>
