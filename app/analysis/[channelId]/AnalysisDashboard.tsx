@@ -29,8 +29,9 @@ import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
 import { useSettings } from '@/lib/context/SettingsContext'
 import { useAuth } from '@/lib/context/AuthContext'
-import { saveSnapshot } from '@/lib/snapshots'
+import { saveSnapshot, getPreviousSnapshot, type ChannelSnapshot } from '@/lib/snapshots'
 import ChannelHistoryChart from '@/components/insights/ChannelHistoryChart'
+import AnalysisDiff from '@/components/insights/AnalysisDiff'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -47,6 +48,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [aiLoading, setAiLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
+  const [previousSnapshot, setPreviousSnapshot] = useState<ChannelSnapshot | null>(null)
   const { addTab } = useChannelTabs()
   const { addRecent } = useRecentChannels()
   const { updateLastAnalyzed } = useWatchlist()
@@ -82,6 +84,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         cached.metrics.momentumLabel
       )
       if (user) {
+        getPreviousSnapshot(user.id, channelId).then(setPreviousSnapshot)
         saveSnapshot(user.id, cached.channel, cached.metrics)
       }
       return
@@ -134,9 +137,11 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           json.metrics.momentumLabel
         )
 
-        // Save snapshot for signed-in users
+        // Save snapshot and fetch previous for signed-in users
         if (user) {
-          saveSnapshot(user.id, json.channel, json.metrics)
+          const prev = await getPreviousSnapshot(user.id, channelId)
+          setPreviousSnapshot(prev)
+          await saveSnapshot(user.id, json.channel, json.metrics)
         }
       } catch {
         setError('Network error — please try again')
@@ -193,6 +198,13 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
+      {user && previousSnapshot && data && (
+        <AnalysisDiff
+          current={{ channel: data.channel, metrics: data.metrics }}
+          previous={previousSnapshot}
+        />
+      )}
+
       <ChannelHeader
         channel={channel}
         shareButton={<ShareButton channelId={channel.id} />}
