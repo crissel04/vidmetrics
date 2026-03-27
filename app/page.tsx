@@ -81,7 +81,7 @@ export default function HomePage() {
           Paste any channel URL. Get instant performance intelligence.
         </p>
 
-        <div className="flex w-full gap-3 max-w-xl">
+        <div className="flex flex-col sm:flex-row w-full gap-3 max-w-xl">
           <div className="relative flex-1">
             <Search
               size={18}

@@ -28,6 +28,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination'
 import { Input } from '@/components/ui/input'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { ArrowUp, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNumber, formatDate, formatDuration } from '@/lib/utils'
@@ -199,7 +200,7 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <ScrollArea className="w-full">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -247,7 +248,8 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
             ))}
           </TableBody>
         </Table>
-      </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       {/* Pagination */}
       {pageCount > 1 && (

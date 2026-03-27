@@ -17,7 +17,7 @@ interface ChannelHeaderProps {
 export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarImage src={channel.thumbnailUrl} alt={channel.title} />
