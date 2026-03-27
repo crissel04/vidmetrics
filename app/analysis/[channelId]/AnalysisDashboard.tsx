@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics, AIInsights } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
@@ -13,7 +13,6 @@ import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
 import { AIInsightsPanel } from '@/components/insights/AIInsightsPanel'
 import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
 import { TopTakeaways } from '@/components/insights/TopTakeaways'
-import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
@@ -24,8 +23,6 @@ import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportToCSV } from '@/lib/utils'
 import { toast } from 'sonner'
-import { useTimePeriod } from '@/lib/context/TimePeriodContext'
-import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
 import { useSettings } from '@/lib/context/SettingsContext'
 import { useAuth } from '@/lib/context/AuthContext'
@@ -151,20 +148,8 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     fetchData()
   }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch, user])
 
-  const { filterVideos, period, setPeriod } = useTimePeriod()
-
   const videos = data?.videos ?? []
   const metrics = data?.metrics ?? null
-
-  const filteredVideos = useMemo(() => filterVideos(videos), [filterVideos, videos])
-
-  const periodMetrics = useMemo(() => {
-    if (period === 'all' || filteredVideos.length === 0) return null
-    const avgViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0) / filteredVideos.length
-    const avgEngagement = filteredVideos.reduce((s, v) => s + v.engagementRate, 0) / filteredVideos.length
-    const totalViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0)
-    return { avgViews, avgEngagement, totalViews }
-  }, [filteredVideos, period])
 
   if (error) {
     return (
@@ -187,15 +172,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
   const { channel } = data
 
-  const EmptyPeriod = () => (
-    <div className="flex flex-col items-center justify-center h-[200px] gap-2">
-      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No videos published in this period</p>
-      <button onClick={() => setPeriod('all')} className="text-xs hover:underline" style={{ color: 'var(--accent)' }}>
-        View all time →
-      </button>
-    </div>
-  )
-
   return (
     <div className="flex flex-col gap-6 fade-in">
       {user && previousSnapshot && data && (
@@ -210,29 +186,17 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         shareButton={<ShareButton channelId={channel.id} />}
       />
 
-      {/* Time Period Selector */}
-      <div
-        className="flex items-center justify-between py-3"
-        style={{ borderBottom: '1px solid var(--border-subtle)' }}
-      >
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analysis period</p>
-        <TimePeriodSelector
-          videosInPeriod={filteredVideos.length}
-          totalVideos={videos.length}
-        />
-      </div>
-
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Avg Views / Video"
-          value={periodMetrics ? periodMetrics.avgViews : metrics.avgViews}
-          trend={period === 'all' ? metrics.viewsGrowthPct : undefined}
+          value={metrics.avgViews}
+          trend={metrics.viewsGrowthPct}
           trendLabel="vs prior"
         />
         <MetricCard
           label="Avg Engagement Rate"
-          value={Math.round((periodMetrics ? periodMetrics.avgEngagement : metrics.avgEngagementRate) * 100)}
+          value={Math.round(metrics.avgEngagementRate * 100)}
           format="percent"
           tooltip="Likes plus comments divided by views, expressed as a percentage. Higher means a more active audience. Industry average is 3\u20134%."
         />
@@ -243,10 +207,10 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           stringValue={metrics.uploadFrequency}
         />
         <MetricCard
-          label={period === 'all' ? 'Views Last 30d' : `Total Views (${period})`}
-          value={periodMetrics ? periodMetrics.totalViews : metrics.totalViewsLast30d}
-          trend={period === 'all' ? metrics.viewsGrowthPct : undefined}
-          tooltip={period === 'all' ? 'Total views across all videos published or still accumulating views in the last 30 days.' : undefined}
+          label="Views Last 30d"
+          value={metrics.totalViewsLast30d}
+          trend={metrics.viewsGrowthPct}
+          tooltip="Total views across all videos published or still accumulating views in the last 30 days."
         />
       </div>
 
@@ -262,28 +226,17 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       {/* Niche Benchmark — channel-level, unfiltered */}
       <NicheBenchmark metrics={metrics} />
 
-      {/* Charts — filtered */}
-      {filteredVideos.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <ViewsChart videos={filteredVideos} />
-          <EngagementChart videos={filteredVideos} avgEngagementRate={periodMetrics?.avgEngagement ?? metrics.avgEngagementRate} />
-        </div>
-      ) : (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-          <EmptyPeriod />
-        </div>
-      )}
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ViewsChart videos={videos} />
+        <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
+      </div>
 
-      {/* Duration Insight — filtered */}
-      {filteredVideos.length > 0 && <DurationInsight videos={filteredVideos} />}
+      {/* Top Takeaways */}
+      <TopTakeaways videos={videos} metrics={metrics} />
 
-      {/* Top Takeaways — filtered */}
-      {filteredVideos.length > 0 && <TopTakeaways videos={filteredVideos} metrics={metrics} />}
-
-      {/* Heatmap — filtered */}
-      {filteredVideos.length > 0 ? (
-        <HeatmapGrid videos={filteredVideos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
-      ) : null}
+      {/* Heatmap */}
+      <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
 
       {/* AI Insights — uses all videos for prompt quality */}
       <AIInsightsPanel
@@ -299,9 +252,9 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       {/* Content Gap Detector */}
       <ContentGapDetector insights={aiInsights} loading={aiLoading} />
 
-      {/* Video Table — filtered */}
+      {/* Video Table */}
       <VideoTable
-        videos={filteredVideos}
+        videos={videos}
         onRowClick={(video) => {
           setSelectedVideo(video)
           setDeepDiveOpen(true)
@@ -320,7 +273,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       <div className="fixed bottom-6 right-6 z-20">
         <Button
           onClick={() => {
-            exportToCSV(filteredVideos, channel.title)
+            exportToCSV(videos, channel.title)
             toast('CSV export started')
           }}
           className="gap-2"

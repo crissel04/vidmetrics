@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useSettings } from '@/lib/context/SettingsContext'
 import { useTheme } from 'next-themes'
-import type { TimePeriod } from '@/lib/context/TimePeriodContext'
 import {
   Card, CardContent, CardHeader,
   CardTitle, CardDescription,
@@ -13,7 +12,6 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Trash2, RotateCcw } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -51,37 +49,6 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-
-          {/* Default time period */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                Default time period
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                The period selected by default when opening a channel
-              </p>
-            </div>
-            <Select
-              value={settings.defaultTimePeriod}
-              onValueChange={(v) => {
-                if (v) updateSetting('defaultTimePeriod', v as TimePeriod)
-              }}
-            >
-              <SelectTrigger className="w-[140px]" style={{ borderColor: 'var(--border)' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-                <SelectItem value="6m">Last 6 months</SelectItem>
-                <SelectItem value="1y">Last year</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator style={{ background: 'var(--border-subtle)' }} />
 
           {/* Videos to fetch */}
           <div className="flex items-center justify-between gap-4">

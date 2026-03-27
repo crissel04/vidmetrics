@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisDashboard } from './AnalysisDashboard'
-import { TimePeriodProvider } from '@/lib/context/TimePeriodContext'
 
 export default async function AnalysisPage({
   params,
@@ -12,11 +11,9 @@ export default async function AnalysisPage({
 
   return (
     <div className="max-w-[1280px] mx-auto w-full">
-      <TimePeriodProvider>
-        <Suspense fallback={<DashboardSkeleton />}>
-          <AnalysisDashboard channelId={channelId} />
-        </Suspense>
-      </TimePeriodProvider>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <AnalysisDashboard channelId={channelId} />
+      </Suspense>
     </div>
   )
 }

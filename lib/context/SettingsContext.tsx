@@ -4,16 +4,12 @@ import {
   createContext, useContext, useState, useEffect,
   useCallback, type ReactNode,
 } from 'react'
-import type { TimePeriod } from '@/lib/context/TimePeriodContext'
-
 export interface AppSettings {
-  defaultTimePeriod: TimePeriod
   videosToFetch: 50 | 100 | 200
   theme: 'light' | 'dark' | 'system'
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultTimePeriod: 'all',
   videosToFetch: 200,
   theme: 'system',
 }

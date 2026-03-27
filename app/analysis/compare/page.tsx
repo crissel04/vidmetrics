@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -27,8 +27,6 @@ import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
 import { ChannelSelector } from '@/components/compare/ChannelSelector'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
-import { TimePeriodProvider, useTimePeriod } from '@/lib/context/TimePeriodContext'
-import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 interface ChannelData {
@@ -53,11 +51,7 @@ interface CompareResult {
 const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
 
 export default function ComparePage() {
-  return (
-    <TimePeriodProvider>
-      <ComparePageContent />
-    </TimePeriodProvider>
-  )
+  return <ComparePageContent />
 }
 
 function ComparePageContent() {
@@ -132,21 +126,7 @@ function ComparePageContent() {
     return () => { cancelled = true }
   }, [channelAId, channelBId, channelCId, channelCache])
 
-  const { filterVideos } = useTimePeriod()
-
   const channels = data ? [data.channelA, data.channelB, ...(data.channelC ? [data.channelC] : [])] : []
-
-  const filteredChannels = useMemo(() =>
-    channels.map(ch => ({
-      ...ch,
-      videos: filterVideos(ch.videos),
-    })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, filterVideos]
-  )
-
-  const totalFiltered = filteredChannels.reduce((s, ch) => s + ch.videos.length, 0)
-  const totalAll = channels.reduce((s, ch) => s + ch.videos.length, 0)
 
   const selectorChannels = channels.map(ch => ({
     channelId: ch.channel.id,
@@ -283,29 +263,17 @@ function ComparePageContent() {
 
       {!loading && data && (
         <>
-          {/* Time Period Selector */}
-          <div
-            className="flex items-center justify-between py-3"
-            style={{ borderBottom: '1px solid var(--border-subtle)' }}
-          >
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analysis period</p>
-            <TimePeriodSelector
-              videosInPeriod={totalFiltered}
-              totalVideos={totalAll}
-            />
-          </div>
-
           <ChannelIdentityRow channels={channels} />
-          <ScorecardTable channels={filteredChannels} />
+          <ScorecardTable channels={channels} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ViewsOverTimeCard channels={filteredChannels} />
-            <EngagementTrendCard channels={filteredChannels} />
-            <UploadFrequencyCard channels={filteredChannels} />
-            <PerformanceConsistencyCard channels={filteredChannels} />
+            <ViewsOverTimeCard channels={channels} />
+            <EngagementTrendCard channels={channels} />
+            <UploadFrequencyCard channels={channels} />
+            <PerformanceConsistencyCard channels={channels} />
           </div>
-          <ContentStrategySection channels={filteredChannels} />
-          <EngagementQualitySection channels={filteredChannels} />
-          <TitlePatternSection channels={filteredChannels} />
+          <ContentStrategySection channels={channels} />
+          <EngagementQualitySection channels={channels} />
+          <TitlePatternSection channels={channels} />
           <AIIntelligenceSection
             aiComparison={data.aiComparison}
             channels={channels}
