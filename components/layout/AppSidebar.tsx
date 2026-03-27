@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/sidebar'
 import { ThemeToggle } from './ThemeToggle'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
+import { useReportsHistory } from '@/lib/context/ReportsHistoryContext'
 
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
@@ -27,6 +28,7 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { reports } = useReportsHistory()
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -52,6 +54,14 @@ export function AppSidebar() {
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.title}</span>
+                        {item.title === 'Reports' && reports.length > 0 && (
+                          <span
+                            className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                          >
+                            {reports.length}
+                          </span>
+                        )}
                       </Link>
                     }
                   />

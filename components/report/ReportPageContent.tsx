@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { FileText, Trash2, ExternalLink } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { formatNumber, formatDate } from '@/lib/utils'
+import { useReportsHistory, type ReportEntry } from '@/lib/context/ReportsHistoryContext'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 import { ViewsChart } from '@/components/charts/ViewsChart'
 import { EngagementChart } from '@/components/charts/EngagementChart'
@@ -26,19 +32,140 @@ interface ChannelData {
 
 export function ReportPageContent() {
   const searchParams = useSearchParams()
+  const channelId = searchParams.get('channelId')
+
+  if (!channelId) {
+    return <ReportLandingPage />
+  }
+
+  return <ReportFetcher channelId={channelId} />
+}
+
+/* ─── Landing page: shows reports history ─── */
+
+function ReportLandingPage() {
+  const { reports, removeReport } = useReportsHistory()
+
+  if (reports.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center fade-in">
+        <FileText size={48} style={{ color: 'var(--text-muted)' }} />
+        <h2
+          className="text-lg font-semibold"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+        >
+          No reports yet
+        </h2>
+        <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
+          Analyze a channel and click Share to create a shareable report link. It will appear here.
+        </p>
+        <Link href="/">
+          <Button
+            variant="outline"
+            size="sm"
+            style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}
+          >
+            Analyze a channel
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fade-in">
+      <div className="mb-6">
+        <h2
+          className="text-lg font-semibold"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+        >
+          Your reports
+        </h2>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+          Click any report to view it. Share the link to send it to anyone.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {reports.map((report) => (
+          <ReportCard key={report.channelId} report={report} onRemove={removeReport} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReportCard({
+  report,
+  onRemove,
+}: {
+  report: ReportEntry
+  onRemove: (channelId: string) => void
+}) {
+  const timeAgo = formatDistanceToNow(new Date(report.sharedAt), { addSuffix: true })
+
+  return (
+    <Link
+      href={`/report?channelId=${report.channelId}`}
+      className="block rounded-xl border bg-[var(--bg-card)] p-4 transition-colors duration-150 hover:bg-[var(--bg-app)]"
+      style={{ borderColor: 'var(--border)' }}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarImage src={report.thumbnailUrl} alt={report.channelTitle} />
+          <AvatarFallback
+            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
+          >
+            {report.channelTitle.slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+            {report.channelTitle}
+          </p>
+          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+            {report.handle} · {formatNumber(report.subscriberCount)} subs
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Shared {timeAgo}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded"
+            style={{ color: 'var(--accent-text)' }}
+          >
+            View report
+            <ExternalLink size={11} />
+          </span>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onRemove(report.channelId)
+            }}
+            className="p-1 rounded transition-colors duration-150"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red-text)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+/* ─── Report fetcher: loads and renders a single report ─── */
+
+function ReportFetcher({ channelId }: { channelId: string }) {
   const [data, setData] = useState<ChannelData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const channelId = searchParams.get('channelId')
-
-    if (!channelId) {
-      setError('No channel specified in this report link.')
-      setLoading(false)
-      return
-    }
-
     fetch(`/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -62,7 +189,7 @@ export function ReportPageContent() {
         setError(err.message ?? 'Could not load this report.')
       })
       .finally(() => setLoading(false))
-  }, [searchParams])
+  }, [channelId])
 
   if (loading) return <ReportSkeleton />
 
