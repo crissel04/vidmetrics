@@ -28,6 +28,9 @@ import { useTimePeriod } from '@/lib/context/TimePeriodContext'
 import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
 import { useSettings } from '@/lib/context/SettingsContext'
+import { useAuth } from '@/lib/context/AuthContext'
+import { saveSnapshot } from '@/lib/snapshots'
+import ChannelHistoryChart from '@/components/insights/ChannelHistoryChart'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -48,6 +51,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const { addRecent } = useRecentChannels()
   const { updateLastAnalyzed } = useWatchlist()
   const { settings } = useSettings()
+  const { user } = useAuth()
 
   useEffect(() => {
     // If cached, use it immediately — no fetch needed
@@ -77,6 +81,9 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         cached.metrics.momentumScore,
         cached.metrics.momentumLabel
       )
+      if (user) {
+        saveSnapshot(user.id, cached.channel, cached.metrics)
+      }
       return
     }
 
@@ -126,13 +133,18 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           json.metrics.momentumScore,
           json.metrics.momentumLabel
         )
+
+        // Save snapshot for signed-in users
+        if (user) {
+          saveSnapshot(user.id, json.channel, json.metrics)
+        }
       } catch {
         setError('Network error — please try again')
         setLoading(false)
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch])
+  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch, user])
 
   const { filterVideos, period, setPeriod } = useTimePeriod()
 
@@ -225,6 +237,9 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           tooltip={period === 'all' ? 'Total views across all videos published or still accumulating views in the last 30 days.' : undefined}
         />
       </div>
+
+      {/* Channel History — shows trends across analyses (signed-in only) */}
+      <ChannelHistoryChart channelId={channelId} />
 
       {/* Momentum Score — channel-level, unfiltered */}
       <MomentumScoreWidget
