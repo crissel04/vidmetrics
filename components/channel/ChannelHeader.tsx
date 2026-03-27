@@ -2,18 +2,18 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Share2, GitCompare } from 'lucide-react'
+import { Share2 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
+import { ComparePanel } from '@/components/compare/ComparePanel'
 import type { ChannelInfo } from '@/lib/types'
 
 interface ChannelHeaderProps {
   channel: ChannelInfo
   onShare?: () => void
-  onCompare?: () => void
   shareButton?: React.ReactNode
 }
 
-export function ChannelHeader({ channel, onShare, onCompare, shareButton }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
       <div className="flex items-start justify-between gap-4">
@@ -63,18 +63,7 @@ export function ChannelHeader({ channel, onShare, onCompare, shareButton }: Chan
               Share
             </Button>
           )}
-          {onCompare && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCompare}
-              className="gap-1.5"
-              style={{ borderColor: 'var(--border)' }}
-            >
-              <GitCompare size={14} />
-              Compare
-            </Button>
-          )}
+          <ComparePanel currentChannel={channel} />
         </div>
       </div>
     </div>

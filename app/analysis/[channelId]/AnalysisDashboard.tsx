@@ -83,7 +83,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     <div className="flex flex-col gap-6 fade-in">
       <ChannelHeader
         channel={channel}
-        onShare={() => {}}
         shareButton={<ShareButton channel={channel} videos={videos} metrics={metrics} />}
       />
 
