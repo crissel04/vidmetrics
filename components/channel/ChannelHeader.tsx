@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Share2 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
-import { ComparePanel } from '@/components/compare/ComparePanel'
 import { CopyHandleButton } from '@/components/ui/CopyHandleButton'
 import type { ChannelInfo } from '@/lib/types'
 
@@ -67,7 +66,6 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
               Share
             </Button>
           )}
-          <ComparePanel currentChannel={channel} />
         </div>
       </div>
     </div>
