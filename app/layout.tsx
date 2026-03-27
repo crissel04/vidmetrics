@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { ChannelTabBar } from "@/components/layout/ChannelTabBar";
+import { HeaderBreadcrumb } from "@/components/layout/HeaderBreadcrumb";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { ChannelCacheProvider } from "@/lib/context/ChannelCacheContext";
 import "./globals.css";
@@ -66,7 +66,7 @@ export default async function RootLayout({
                   <SidebarTrigger className="-ml-1" />
                   <Separator orientation="vertical" className="h-4" />
                   <div className="flex-1 min-w-0">
-                    <ChannelTabBar />
+                    <HeaderBreadcrumb />
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <ThemeToggle />
