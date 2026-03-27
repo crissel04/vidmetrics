@@ -118,6 +118,21 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     fetchData()
   }, [channelId, addTab, channelCache, addRecent])
 
+  const { filterVideos, period, setPeriod } = useTimePeriod()
+
+  const videos = data?.videos ?? []
+  const metrics = data?.metrics ?? null
+
+  const filteredVideos = useMemo(() => filterVideos(videos), [filterVideos, videos])
+
+  const periodMetrics = useMemo(() => {
+    if (period === 'all' || filteredVideos.length === 0) return null
+    const avgViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0) / filteredVideos.length
+    const avgEngagement = filteredVideos.reduce((s, v) => s + v.engagementRate, 0) / filteredVideos.length
+    const totalViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0)
+    return { avgViews, avgEngagement, totalViews }
+  }, [filteredVideos, period])
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -133,21 +148,11 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     )
   }
 
-  if (loading || !data) {
+  if (loading || !data || !metrics) {
     return <DashboardLoadingSkeleton />
   }
 
-  const { channel, videos, metrics } = data
-  const { filterVideos, period, setPeriod } = useTimePeriod()
-  const filteredVideos = useMemo(() => filterVideos(videos), [filterVideos, videos])
-
-  const periodMetrics = useMemo(() => {
-    if (period === 'all' || filteredVideos.length === 0) return null
-    const avgViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0) / filteredVideos.length
-    const avgEngagement = filteredVideos.reduce((s, v) => s + v.engagementRate, 0) / filteredVideos.length
-    const totalViews = filteredVideos.reduce((s, v) => s + v.viewCount, 0)
-    return { avgViews, avgEngagement, totalViews }
-  }, [filteredVideos, period])
+  const { channel } = data
 
   const EmptyPeriod = () => (
     <div className="flex flex-col items-center justify-center h-[200px] gap-2">

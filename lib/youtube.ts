@@ -109,70 +109,123 @@ export async function fetchChannelInfo(channelId: string): Promise<ChannelInfo &
 }
 
 /**
- * Fetches up to 50 video IDs from a channel's uploads playlist.
- * Cost: 1 quota unit per page of 50.
+ * Fetches up to maxVideos video IDs from a channel's uploads
+ * playlist using pagination. Each page of 50 costs 1 quota unit.
+ * Default of 200 videos uses 4 quota units.
+ *
+ * Stops early if the channel has fewer videos than maxVideos.
+ * Results are in reverse chronological order (newest first)
+ * as returned by the YouTube API.
+ *
+ * @param uploadsPlaylistId - from channel.contentDetails.relatedPlaylists.uploads
+ * @param maxVideos - maximum videos to fetch, default 200, must be multiple of 50
  */
-export async function fetchVideoIds(uploadsPlaylistId: string, maxResults = 50): Promise<string[]> {
-  const res = await fetch(
-    `${BASE}/playlistItems?part=contentDetails&playlistId=${uploadsPlaylistId}` +
-    `&maxResults=${Math.min(maxResults, 50)}&fields=items(contentDetails/videoId),nextPageToken&key=${KEY()}`
-  )
-  const data = await res.json()
+export async function fetchVideoIds(uploadsPlaylistId: string, maxVideos = 200): Promise<string[]> {
+  const allIds: string[] = []
+  let pageToken: string | undefined = undefined
+  const maxPages = Math.ceil(maxVideos / 50)
 
-  if (data.error) {
-    handleYouTubeError(data.error)
+  for (let page = 0; page < maxPages; page++) {
+    const params = new URLSearchParams({
+      part: 'contentDetails',
+      playlistId: uploadsPlaylistId,
+      maxResults: '50',
+      fields: 'items(contentDetails/videoId),nextPageToken',
+      key: KEY(),
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+
+    const res = await fetch(`${BASE}/playlistItems?${params.toString()}`)
+
+    if (!res.ok) {
+      console.error(`playlistItems.list failed on page ${page}:`, res.status)
+      break
+    }
+
+    const data = await res.json()
+
+    if (data.error) {
+      handleYouTubeError(data.error)
+    }
+
+    const ids = (data.items ?? []).map(
+      (item: { contentDetails: { videoId: string } }) => item.contentDetails.videoId
+    )
+    allIds.push(...ids)
+
+    if (!data.nextPageToken) break
+    pageToken = data.nextPageToken
   }
 
-  return (data.items ?? []).map(
-    (item: { contentDetails: { videoId: string } }) => item.contentDetails.videoId
-  )
+  return allIds.slice(0, maxVideos)
 }
 
 /**
- * Fetches full video details for a batch of video IDs.
- * Up to 50 IDs per request — all in one call, 1 quota unit regardless of count.
+ * Fetches full video details for a list of video IDs.
+ * Splits into batches of 50 (YouTube API limit per request) and fetches in parallel.
+ * Each batch costs 1 quota unit regardless of count within the batch.
  *
  * Note: likeCount and commentCount may be absent (not just 0) if hidden by the creator.
  */
 export async function fetchVideoDetails(videoIds: string[]): Promise<RawVideo[]> {
   if (videoIds.length === 0) return []
 
-  const res = await fetch(
-    `${BASE}/videos?part=snippet,statistics,contentDetails` +
-    `&id=${videoIds.join(',')}&key=${KEY()}`
-  )
-  const data = await res.json()
-
-  if (data.error) {
-    handleYouTubeError(data.error)
+  // Split into batches of 50 — each batch costs 1 quota unit
+  const batches: string[][] = []
+  for (let i = 0; i < videoIds.length; i += 50) {
+    batches.push(videoIds.slice(i, i + 50))
   }
 
-  return (data.items ?? []).map((v: {
-    id: string
-    snippet: { title: string; thumbnails: Record<string, { url: string }>; publishedAt: string }
-    contentDetails: { duration: string }
-    statistics: { viewCount?: string; likeCount?: string; commentCount?: string }
-  }) => ({
-    id: v.id,
-    title: v.snippet.title,
-    thumbnailUrl: v.snippet.thumbnails?.maxres?.url
-      ?? v.snippet.thumbnails?.high?.url
-      ?? v.snippet.thumbnails?.medium?.url
-      ?? '',
-    publishedAt: v.snippet.publishedAt,
-    duration: v.contentDetails.duration,
-    viewCount: parseInt(v.statistics.viewCount ?? '0', 10),
-    // likeCount and commentCount can be absent if the creator has hidden them
-    likeCount: parseInt(v.statistics.likeCount ?? '0', 10),
-    commentCount: parseInt(v.statistics.commentCount ?? '0', 10),
-  }))
+  // Fetch all batches in parallel — faster than sequential
+  const batchResults = await Promise.all(
+    batches.map(async (batch) => {
+      const res = await fetch(
+        `${BASE}/videos?part=snippet,statistics,contentDetails` +
+        `&id=${batch.join(',')}&key=${KEY()}`
+      )
+      const data = await res.json()
+
+      if (data.error) {
+        handleYouTubeError(data.error)
+      }
+
+      return data
+    })
+  )
+
+  const allVideos: RawVideo[] = []
+
+  for (const data of batchResults) {
+    const videos = (data.items ?? []).map((v: {
+      id: string
+      snippet: { title: string; thumbnails: Record<string, { url: string }>; publishedAt: string }
+      contentDetails: { duration: string }
+      statistics: { viewCount?: string; likeCount?: string; commentCount?: string }
+    }): RawVideo => ({
+      id: v.id,
+      title: v.snippet.title,
+      thumbnailUrl: v.snippet.thumbnails?.maxres?.url
+        ?? v.snippet.thumbnails?.high?.url
+        ?? v.snippet.thumbnails?.medium?.url
+        ?? '',
+      publishedAt: v.snippet.publishedAt,
+      duration: v.contentDetails.duration,
+      viewCount: parseInt(v.statistics.viewCount ?? '0', 10),
+      // likeCount and commentCount can be absent if the creator has hidden them
+      likeCount: parseInt(v.statistics.likeCount ?? '0', 10),
+      commentCount: parseInt(v.statistics.commentCount ?? '0', 10),
+    }))
+    allVideos.push(...videos)
+  }
+
+  return allVideos
 }
 
 /**
- * Fetches all data needed for a full channel analysis in ~3 YouTube API quota units:
+ * Fetches all data needed for a full channel analysis in ~9 YouTube API quota units:
  * 1. channels.list (1 unit) — channel info + uploads playlist ID
- * 2. playlistItems.list (1 unit) — up to 50 most recent video IDs
- * 3. videos.list (1 unit) — full stats for all IDs in one batched request
+ * 2. playlistItems.list (4 units) — up to 200 most recent video IDs via pagination
+ * 3. videos.list (4 units) — full stats in parallel batches of 50
  *
  * Note: YouTube API returns all statistics (viewCount, likeCount, etc.) as strings.
  * This function parses them to numbers before returning.
@@ -180,7 +233,7 @@ export async function fetchVideoDetails(videoIds: string[]): Promise<RawVideo[]>
  */
 export async function fetchFullChannelData(channelId: string) {
   const channelInfo = await fetchChannelInfo(channelId)
-  const videoIds = await fetchVideoIds(channelInfo.uploadsPlaylistId, 50)
+  const videoIds = await fetchVideoIds(channelInfo.uploadsPlaylistId, 200)
   const rawVideos = await fetchVideoDetails(videoIds)
 
   return { channelInfo, rawVideos }

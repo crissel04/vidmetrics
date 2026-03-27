@@ -116,10 +116,13 @@ Avg views/video: ${formatNumber(metrics.avgViews)}
 Avg engagement rate: ${metrics.avgEngagementRate.toFixed(2)}%
 Momentum score: ${metrics.momentumScore}/100 (${metrics.momentumLabel})
 
-Top 20 videos by views:
-${videos.slice(0, 20).map(v =>
-  `- "${v.title}" | ${formatNumber(v.viewCount)} views | ${v.engagementRate.toFixed(2)}% engagement | ${v.daysLive}d ago | ${v.duration}`
-).join('\n')}
+Top 30 videos by views:
+${videos
+  .sort((a, b) => b.viewCount - a.viewCount)
+  .slice(0, 30)
+  .map(v =>
+    `- "${v.title}" | ${formatNumber(v.viewCount)} views | ${v.engagementRate.toFixed(2)}% engagement | ${v.daysLive}d ago | ${v.duration}`
+  ).join('\n')}
 
 Respond with ONLY a valid JSON object — no markdown fences, no explanation, no preamble:
 {

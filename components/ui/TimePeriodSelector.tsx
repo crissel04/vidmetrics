@@ -52,8 +52,8 @@ export function TimePeriodSelector({ videosInPeriod, totalVideos }: TimePeriodSe
 
       {period !== 'all' && videosInPeriod !== undefined && videosInPeriod < 5 && (
         <p className="text-xs" style={{ color: 'var(--amber-text)' }}>
-          Limited data — only {totalVideos} videos fetched total.
-          Heavy posters may have more history not shown.
+          Only {videosInPeriod} videos published in this period.
+          This channel may post infrequently or recently started.
         </p>
       )}
     </div>
