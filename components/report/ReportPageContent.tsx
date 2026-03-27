@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { FileText, Trash2, ExternalLink } from 'lucide-react'
+import { useAuth } from '@/lib/context/AuthContext'
+import AuthModal from '@/components/auth/AuthModal'
 import { formatDistanceToNow } from 'date-fns'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -45,6 +47,8 @@ export function ReportPageContent() {
 
 function ReportLandingPage() {
   const { reports, removeReport } = useReportsHistory()
+  const { user } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
 
   if (reports.length === 0) {
     return (
@@ -74,6 +78,29 @@ function ReportLandingPage() {
 
   return (
     <div className="fade-in">
+      {!user && (
+        <>
+          <div
+            className="flex items-center justify-between p-3 rounded-lg border mb-4"
+            style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+          >
+            <p className="text-sm" style={{ color: 'var(--accent-text)' }}>
+              Sign in to sync your reports across devices
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1.5"
+              style={{ borderColor: 'var(--accent)' }}
+              onClick={() => setAuthOpen(true)}
+            >
+              Sign in
+            </Button>
+          </div>
+          <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+        </>
+      )}
+
       <div className="mb-6">
         <h2
           className="text-lg font-semibold"

@@ -10,13 +10,17 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useWatchlist, type WatchlistEntry } from '@/lib/context/WatchlistContext'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
+import { useAuth } from '@/lib/context/AuthContext'
+import AuthModal from '@/components/auth/AuthModal'
 import { formatNumber } from '@/lib/utils'
 
 export default function WatchlistPage() {
   const { watchlist, removeFromWatchlist } = useWatchlist()
   const { addTab } = useChannelTabs()
+  const { user } = useAuth()
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [authOpen, setAuthOpen] = useState(false)
 
   const toggleSelect = (channelId: string) => {
     setSelected(prev => {
@@ -87,6 +91,29 @@ export default function WatchlistPage() {
 
   return (
     <div className="space-y-6 max-w-[1280px] mx-auto w-full fade-in">
+      {!user && (
+        <>
+          <div
+            className="flex items-center justify-between p-3 rounded-lg border"
+            style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
+          >
+            <p className="text-sm" style={{ color: 'var(--accent-text)' }}>
+              Sign in to sync your watchlist across devices
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1.5"
+              style={{ borderColor: 'var(--accent)' }}
+              onClick={() => setAuthOpen(true)}
+            >
+              Sign in
+            </Button>
+          </div>
+          <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+        </>
+      )}
+
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>

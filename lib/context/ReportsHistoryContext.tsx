@@ -4,6 +4,8 @@ import {
   createContext, useContext, useState, useEffect,
   useCallback, type ReactNode,
 } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/context/AuthContext'
 
 export interface ReportEntry {
   channelId: string
@@ -16,61 +18,103 @@ export interface ReportEntry {
 
 interface ReportsHistoryContextValue {
   reports: ReportEntry[]
-  addReport: (entry: ReportEntry) => void
-  removeReport: (channelId: string) => void
+  loading: boolean
+  addReport: (entry: ReportEntry) => Promise<void>
+  removeReport: (channelId: string) => Promise<void>
 }
 
 const ReportsHistoryContext = createContext<ReportsHistoryContextValue | null>(null)
-
-const STORAGE_KEY = 'vidmetrics_reports'
-const MAX_REPORTS = 10
+const LOCAL_KEY = 'vidmetrics_reports'
 
 export function ReportsHistoryProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [reports, setReports] = useState<ReportEntry[]>([])
-  const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed: ReportEntry[] = JSON.parse(stored)
-        setReports(
-          parsed.sort((a, b) =>
-            new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime()
+    setLoading(true)
+    if (user) {
+      supabase
+        .from('reports')
+        .select('*')
+        .order('shared_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error) {
+            setReports((data ?? []).map((row: Record<string, unknown>) => ({
+              channelId: row.channel_id as string,
+              channelTitle: row.channel_title as string,
+              handle: row.handle as string,
+              thumbnailUrl: row.thumbnail_url as string,
+              subscriberCount: row.subscriber_count as number,
+              sharedAt: row.shared_at as string,
+            })))
+          }
+          setLoading(false)
+        })
+    } else {
+      try {
+        const stored = localStorage.getItem(LOCAL_KEY)
+        if (stored) {
+          const parsed: ReportEntry[] = JSON.parse(stored)
+          setReports(
+            parsed.sort((a, b) =>
+              new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime()
+            )
           )
-        )
+        }
+      } catch {
+        setReports([])
       }
-    } catch {
-      setReports([])
+      setLoading(false)
     }
-    setLoaded(true)
-  }, [])
+  }, [user, supabase])
 
   useEffect(() => {
-    if (!loaded) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(reports))
-    } catch {
-      // localStorage full or unavailable (private browsing) — degrade gracefully
+    if (!user && !loading) {
+      try {
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(reports))
+      } catch {}
     }
-  }, [reports, loaded])
+  }, [reports, user, loading])
 
-  const addReport = useCallback((entry: ReportEntry) => {
+  const addReport = useCallback(async (entry: ReportEntry) => {
+    const now = new Date().toISOString()
+    const newEntry = { ...entry, sharedAt: now }
+
+    if (user) {
+      const { error } = await supabase.from('reports').upsert({
+        user_id: user.id,
+        channel_id: entry.channelId,
+        channel_title: entry.channelTitle,
+        handle: entry.handle,
+        thumbnail_url: entry.thumbnailUrl,
+        subscriber_count: entry.subscriberCount,
+        shared_at: now,
+      }, { onConflict: 'user_id,channel_id' })
+      if (error) { console.error(error); return }
+    }
+
     setReports(prev => {
       const filtered = prev.filter(r => r.channelId !== entry.channelId)
-      return [
-        { ...entry, sharedAt: new Date().toISOString() },
-        ...filtered,
-      ].slice(0, MAX_REPORTS)
+      return [newEntry, ...filtered]
     })
-  }, [])
+  }, [user, supabase])
 
-  const removeReport = useCallback((channelId: string) => {
+  const removeReport = useCallback(async (channelId: string) => {
+    if (user) {
+      await supabase.from('reports')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('channel_id', channelId)
+    }
     setReports(prev => prev.filter(r => r.channelId !== channelId))
-  }, [])
+  }, [user, supabase])
 
   return (
-    <ReportsHistoryContext.Provider value={{ reports, addReport, removeReport }}>
+    <ReportsHistoryContext.Provider value={{
+      reports, loading, addReport, removeReport,
+    }}>
       {children}
     </ReportsHistoryContext.Provider>
   )
