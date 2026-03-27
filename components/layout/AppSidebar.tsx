@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart2, FileText, Bookmark, Settings2, Keyboard } from 'lucide-react'
+import { House, BarChart2, FileText, Bookmark, GitCompare, Settings2, Keyboard } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
 import { useReportsHistory } from '@/lib/context/ReportsHistoryContext'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
+import { useSavedComparisons } from '@/lib/context/SavedComparisonsContext'
 
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
@@ -30,6 +31,7 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { reports } = useReportsHistory()
   const { watchlist } = useWatchlist()
+  const { comparisons } = useSavedComparisons()
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -73,6 +75,25 @@ export function AppSidebar() {
                           style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
                         >
                           {watchlist.length}
+                        </span>
+                      )}
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === '/comparisons'}
+                  render={
+                    <Link href="/comparisons">
+                      <GitCompare size={16} />
+                      <span>Comparisons</span>
+                      {comparisons.length > 0 && (
+                        <span
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                        >
+                          {comparisons.length}
                         </span>
                       )}
                     </Link>

@@ -14,6 +14,7 @@ import { RecentChannelsProvider } from "@/lib/context/RecentChannelsContext";
 import { ReportsHistoryProvider } from "@/lib/context/ReportsHistoryContext";
 import { WatchlistProvider } from "@/lib/context/WatchlistContext";
 import { SettingsProvider } from "@/lib/context/SettingsContext";
+import { SavedComparisonsProvider } from "@/lib/context/SavedComparisonsContext";
 import { GlobalKeyboardShortcuts } from "@/components/layout/GlobalKeyboardShortcuts";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import UserButton from "@/components/auth/UserButton";
@@ -72,6 +73,7 @@ export default async function RootLayout({
               <ReportsHistoryProvider>
               <WatchlistProvider>
               <SettingsProvider>
+              <SavedComparisonsProvider>
               <AppSidebar />
               <SidebarInset>
                 <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
@@ -90,6 +92,7 @@ export default async function RootLayout({
                 </main>
               </SidebarInset>
               <GlobalKeyboardShortcuts />
+              </SavedComparisonsProvider>
               </SettingsProvider>
               </WatchlistProvider>
               </ReportsHistoryProvider>

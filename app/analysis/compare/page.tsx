@@ -5,7 +5,16 @@ import { useSearchParams } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { Minus, TrendingUp, TrendingDown, Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription,
+} from '@/components/ui/dialog'
+import { Minus, TrendingUp, TrendingDown, Check, BookmarkPlus, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuth } from '@/lib/context/AuthContext'
+import { useSavedComparisons } from '@/lib/context/SavedComparisonsContext'
 import {
   CartesianGrid, XAxis, YAxis,
   LineChart, Line,
@@ -57,10 +66,15 @@ function ComparePageContent() {
   const channelBId = searchParams.get('b')
   const channelCId = searchParams.get('c')
   const channelCache = useChannelCache()
+  const { user } = useAuth()
+  const { saveComparison } = useSavedComparisons()
 
   const [data, setData] = useState<CompareResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!channelAId || !channelBId) {
@@ -155,7 +169,109 @@ function ComparePageContent() {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      <ChannelSelector channels={selectorChannels} />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <ChannelSelector channels={selectorChannels} />
+        </div>
+        {user && channels.length >= 2 && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              style={{ borderColor: 'var(--border)' }}
+              onClick={() => {
+                setSaveName(
+                  channels
+                    .map(d => d.channel.handle.replace('@', ''))
+                    .join(' vs ')
+                )
+                setSaveModalOpen(true)
+              }}
+            >
+              <BookmarkPlus size={14} />
+              Save comparison
+            </Button>
+
+            <Dialog open={saveModalOpen} onOpenChange={setSaveModalOpen}>
+              <DialogContent
+                className="max-w-[380px] shadow-none"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <DialogHeader>
+                  <DialogTitle
+                    className="font-semibold"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    Save this comparison
+                  </DialogTitle>
+                  <DialogDescription>
+                    Give it a name so you can find it later
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-3 pt-2">
+                  <Input
+                    value={saveName}
+                    onChange={e => setSaveName(e.target.value)}
+                    placeholder="e.g. Tech channels Q1 2025"
+                    onKeyDown={async e => {
+                      if (e.key === 'Enter' && saveName.trim() && !saving) {
+                        setSaving(true)
+                        await saveComparison(
+                          saveName,
+                          channels.map(d => ({
+                            id: d.channel.id,
+                            title: d.channel.title,
+                            handle: d.channel.handle,
+                            thumbnailUrl: d.channel.thumbnailUrl,
+                          }))
+                        )
+                        setSaving(false)
+                        setSaveModalOpen(false)
+                        toast.success('Comparison saved')
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSaveModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!saveName.trim() || saving}
+                      onClick={async () => {
+                        setSaving(true)
+                        await saveComparison(
+                          saveName,
+                          channels.map(d => ({
+                            id: d.channel.id,
+                            title: d.channel.title,
+                            handle: d.channel.handle,
+                            thumbnailUrl: d.channel.thumbnailUrl,
+                          }))
+                        )
+                        setSaving(false)
+                        setSaveModalOpen(false)
+                        toast.success('Comparison saved')
+                      }}
+                      style={{ background: 'var(--accent)', color: '#ffffff' }}
+                    >
+                      {saving ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : 'Save'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+      </div>
 
       {loading && <CompareLoadingSkeleton />}
 
