@@ -2,9 +2,11 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Share2 } from 'lucide-react'
+import { Share2, Bookmark } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { CopyHandleButton } from '@/components/ui/CopyHandleButton'
+import { useWatchlist } from '@/lib/context/WatchlistContext'
+import { toast } from 'sonner'
 import type { ChannelInfo } from '@/lib/types'
 
 interface ChannelHeaderProps {
@@ -14,6 +16,9 @@ interface ChannelHeaderProps {
 }
 
 export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderProps) {
+  const { isWatchlisted, addToWatchlist, removeFromWatchlist } = useWatchlist()
+  const bookmarked = isWatchlisted(channel.id)
+
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -54,6 +59,39 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (bookmarked) {
+                removeFromWatchlist(channel.id)
+                toast('Removed from Watchlist')
+              } else {
+                addToWatchlist({
+                  channelId: channel.id,
+                  channelTitle: channel.title,
+                  handle: channel.handle,
+                  thumbnailUrl: channel.thumbnailUrl,
+                  subscriberCount: channel.subscriberCount,
+                  category: channel.category,
+                  addedAt: new Date().toISOString(),
+                })
+                toast('Added to Watchlist')
+              }
+            }}
+            className="gap-1.5"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <Bookmark
+              size={14}
+              className={bookmarked
+                ? 'fill-[var(--accent)] text-[var(--accent)]'
+                : ''
+              }
+              style={!bookmarked ? { color: 'var(--text-secondary)' } : undefined}
+            />
+            {bookmarked ? 'Saved' : 'Save'}
+          </Button>
           {shareButton ? shareButton : onShare && (
             <Button
               variant="outline"

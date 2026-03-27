@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart2, FileText } from 'lucide-react'
+import { House, BarChart2, FileText, Bookmark } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +19,7 @@ import {
 import { ThemeToggle } from './ThemeToggle'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
 import { useReportsHistory } from '@/lib/context/ReportsHistoryContext'
+import { useWatchlist } from '@/lib/context/WatchlistContext'
 
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
@@ -29,6 +30,7 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { reports } = useReportsHistory()
+  const { watchlist } = useWatchlist()
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
@@ -67,6 +69,25 @@ export function AppSidebar() {
                   />
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === '/watchlist'}
+                  render={
+                    <Link href="/watchlist">
+                      <Bookmark size={16} />
+                      <span>Watchlist</span>
+                      {watchlist.length > 0 && (
+                        <span
+                          className="ml-auto text-xs px-1.5 py-0.5 rounded-full font-medium"
+                          style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                        >
+                          {watchlist.length}
+                        </span>
+                      )}
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

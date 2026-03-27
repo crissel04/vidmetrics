@@ -26,6 +26,7 @@ import { exportToCSV } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useTimePeriod } from '@/lib/context/TimePeriodContext'
 import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
+import { useWatchlist } from '@/lib/context/WatchlistContext'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -44,6 +45,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
   const { addTab } = useChannelTabs()
   const { addRecent } = useRecentChannels()
+  const { updateLastAnalyzed } = useWatchlist()
 
   useEffect(() => {
     // If cached, use it immediately — no fetch needed
@@ -68,6 +70,11 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         handle: cached.channel.handle,
         thumbnailUrl: cached.channel.thumbnailUrl,
       })
+      updateLastAnalyzed(
+        cached.channel.id,
+        cached.metrics.momentumScore,
+        cached.metrics.momentumLabel
+      )
       return
     }
 
@@ -110,13 +117,20 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           handle: json.channel.handle,
           thumbnailUrl: json.channel.thumbnailUrl,
         })
+
+        // Update watchlist entry if present
+        updateLastAnalyzed(
+          json.channel.id,
+          json.metrics.momentumScore,
+          json.metrics.momentumLabel
+        )
       } catch {
         setError('Network error — please try again')
         setLoading(false)
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache, addRecent])
+  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed])
 
   const { filterVideos, period, setPeriod } = useTimePeriod()
 
