@@ -7,17 +7,17 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
 
-// Channel analysis: 20 requests per hour per IP
+// Channel analysis: 200 requests per hour per IP
 const channelRatelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(20, '1 h'),
+  limiter: Ratelimit.slidingWindow(200, '1 h'),
   prefix: 'ratelimit:channel',
 })
 
-// AI insights: 10 requests per hour per IP (more expensive)
+// AI insights: 100 requests per hour per IP
 const insightsRatelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(10, '1 h'),
+  limiter: Ratelimit.slidingWindow(100, '1 h'),
   prefix: 'ratelimit:insights',
 })
 

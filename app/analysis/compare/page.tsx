@@ -7,9 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Check, Minus, TrendingUp, TrendingDown } from 'lucide-react'
 import {
-  Bar, BarChart, CartesianGrid, XAxis, YAxis,
+  CartesianGrid, XAxis, YAxis,
   ScatterChart, Scatter, ZAxis,
+  LineChart, Line,
 } from 'recharts'
+import { format } from 'date-fns'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
@@ -107,23 +109,23 @@ export default function ComparePage() {
       {/* Section 2: Head-to-Head Scorecard */}
       <ScorecardTable channels={channels} />
 
-      {/* Section 3: Content Strategy Divergence */}
-      <ContentStrategySection channels={channels} />
-
-      {/* Section 4: Performance Charts */}
+      {/* Section 3: Performance Charts */}
       <PerformanceCharts channels={channels} />
 
-      {/* Section 5: Title Pattern Analysis */}
+      {/* Section 4: Content Strategy Divergence */}
+      <ContentStrategySection channels={channels} />
+
+      {/* Section 5: Engagement Quality */}
+      <EngagementQualitySection channels={channels} />
+
+      {/* Section 6: Title Pattern Analysis */}
       <TitlePatternSection channels={channels} />
 
-      {/* Section 6: AI Competitive Intelligence */}
+      {/* Section 7: AI Competitive Intelligence */}
       <AIIntelligenceSection
         aiComparison={data.aiComparison}
         channels={channels}
       />
-
-      {/* Section 7: Engagement Quality */}
-      <EngagementQualitySection channels={channels} />
     </div>
   )
 }
@@ -384,46 +386,81 @@ function ContentStrategySection({ channels }: { channels: ChannelData[] }) {
   )
 }
 
-/* ─── Section 4: Performance Charts ─── */
+/* ─── Section 3: Performance Charts ─── */
 
 function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
   const chartColors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
 
-  // Bar chart: last 10 videos per channel
-  const maxLen = Math.max(...channels.map(ch => Math.min(ch.videos.length, 10)))
-  const barData = Array.from({ length: maxLen }, (_, i) => {
-    const point: Record<string, string | number> = { index: `Video ${i + 1}` }
-    channels.forEach((ch, ci) => {
-      const sorted = [...ch.videos].sort((a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-      )
-      const reversed = sorted.slice(0, 10).reverse()
-      point[`channel${ci}`] = reversed[i]?.viewCount ?? 0
-    })
-    return point
+  // Prepare per-channel sorted videos (last 20, ascending by date)
+  const perChannel = channels.map(ch => {
+    const sorted = [...ch.videos]
+      .sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime())
+      .slice(-20)
+    return { channel: ch.channel, videos: sorted }
   })
 
-  const barConfig: Record<string, { label: string; color: string }> = {}
+  // Tab 1: Views over time — one data point per video, keyed by date
+  const viewsLineData = perChannel.flatMap((pc, ci) =>
+    pc.videos.map(v => ({
+      date: new Date(v.publishedAt).getTime(),
+      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
+      [`views${ci}`]: v.viewCount,
+      [`title${ci}`]: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+    }))
+  ).sort((a, b) => a.date - b.date)
+
+  // Merge points with same date into single rows so lines connect properly
+  // Each channel gets its own line — use separate data arrays per channel
+  const viewsConfig: Record<string, { label: string; color: string }> = {}
   channels.forEach((ch, i) => {
-    barConfig[`channel${i}`] = { label: ch.channel.title, color: chartColors[i] }
+    viewsConfig[`views${i}`] = { label: ch.channel.title, color: chartColors[i] }
   })
 
-  // Scatter chart: engagement vs views
-  const scatterData = channels.flatMap((ch, ci) =>
+  // Tab 2: View velocity scatter — daysLive vs viewCount
+  const velocityData = channels.flatMap((ch, ci) =>
     ch.videos.map(v => ({
-      channel: ch.channel.title,
       channelIdx: ci,
+      daysLive: v.daysLive,
       views: v.viewCount,
-      engagement: v.engagementRate,
-      title: v.title,
+      title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
       fill: chartColors[ci],
     }))
   )
 
-  const scatterConfig: Record<string, { label: string; color: string }> = {}
+  const velocityConfig: Record<string, { label: string; color: string }> = {}
   channels.forEach((ch, i) => {
-    scatterConfig[`scatter${i}`] = { label: ch.channel.title, color: chartColors[i] }
+    velocityConfig[`velocity${i}`] = { label: ch.channel.title, color: chartColors[i] }
   })
+
+  // Tab 3: Engagement trend — same structure as views but Y = engagementRate
+  const engagementLineData = perChannel.flatMap((pc, ci) =>
+    pc.videos.map(v => ({
+      date: new Date(v.publishedAt).getTime(),
+      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
+      [`engagement${ci}`]: v.engagementRate,
+      [`title${ci}`]: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+    }))
+  ).sort((a, b) => a.date - b.date)
+
+  const engagementConfig: Record<string, { label: string; color: string }> = {}
+  channels.forEach((ch, i) => {
+    engagementConfig[`engagement${i}`] = { label: ch.channel.title, color: chartColors[i] }
+  })
+
+  // Build per-channel line data for views (each channel needs its own array for LineChart)
+  const viewsPerChannel = perChannel.map((pc, ci) =>
+    pc.videos.map(v => ({
+      date: new Date(v.publishedAt).getTime(),
+      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
+      views: v.viewCount,
+      title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+      channelName: pc.channel.title,
+    }))
+  )
+
+  // Merge all into unified timeline for views
+  const viewsTimeline = buildTimeline(perChannel, (v) => v.viewCount, 'value')
+  const engagementTimeline = buildTimeline(perChannel, (v) => v.engagementRate, 'value')
 
   return (
     <div
@@ -436,19 +473,21 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
         </h3>
       </div>
       <div className="p-4">
-        <Tabs defaultValue="bar">
+        <Tabs defaultValue="views">
           <TabsList>
-            <TabsTrigger value="bar">Views (Bar)</TabsTrigger>
-            <TabsTrigger value="scatter">Engagement vs Views</TabsTrigger>
+            <TabsTrigger value="views">Views over time</TabsTrigger>
+            <TabsTrigger value="velocity">View velocity</TabsTrigger>
+            <TabsTrigger value="engagement">Engagement trend</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="bar">
+          {/* Tab 1: Views over time */}
+          <TabsContent value="views">
             <div className="mt-4">
-              <ChartContainer config={barConfig} className="h-[300px] w-full">
-                <BarChart data={barData} barGap={2}>
+              <ChartContainer config={viewsConfig} className="min-h-[300px] w-full">
+                <LineChart data={viewsTimeline}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                   <XAxis
-                    dataKey="index"
+                    dataKey="dateLabel"
                     tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                     tickLine={false}
                     axisLine={false}
@@ -460,40 +499,49 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
                     axisLine={false}
                     width={50}
                   />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip
+                    content={
+                      <CustomLineTooltip
+                        channels={channels}
+                        chartColors={chartColors}
+                        valueFormatter={(v) => formatNumber(v)}
+                        valueSuffix=" views"
+                      />
+                    }
+                  />
                   {channels.map((_, i) => (
-                    <Bar
+                    <Line
                       key={i}
-                      dataKey={`channel${i}`}
-                      fill={chartColors[i]}
-                      radius={[4, 4, 0, 0]}
+                      type="monotone"
+                      dataKey={`ch${i}`}
+                      stroke={chartColors[i]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls
                     />
                   ))}
-                </BarChart>
+                </LineChart>
               </ChartContainer>
             </div>
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-2 px-2">
-              {channels.map((ch, i) => (
-                <div key={ch.channel.id} className="flex items-center gap-1.5">
-                  <div
-                    className="h-2.5 w-2.5 rounded-sm"
-                    style={{ background: chartColors[i] }}
-                  />
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {ch.channel.title}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <ChartLegend channels={channels} chartColors={chartColors} />
           </TabsContent>
 
-          <TabsContent value="scatter">
+          {/* Tab 2: View velocity */}
+          <TabsContent value="velocity">
             <div className="mt-4">
-              <ChartContainer config={scatterConfig} className="h-[300px] w-full">
+              <ChartContainer config={velocityConfig} className="min-h-[300px] w-full">
                 <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                   <XAxis
+                    type="number"
+                    dataKey="daysLive"
+                    name="Days Old"
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
                     type="number"
                     dataKey="views"
                     name="Views"
@@ -501,48 +549,208 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
                     tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
                     tickLine={false}
                     axisLine={false}
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="engagement"
-                    name="Engagement %"
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
                     width={50}
                   />
                   <ZAxis range={[40, 40]} />
                   <ChartTooltip
-                    content={<ChartTooltipContent />}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      const d = payload[0].payload
+                      return (
+                        <div
+                          className="rounded-lg border px-2.5 py-1.5 text-xs"
+                          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                        >
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {d.title}
+                          </p>
+                          <p style={{ color: 'var(--text-muted)' }}>
+                            {formatNumber(d.views)} views &middot; {d.daysLive} days old
+                          </p>
+                        </div>
+                      )
+                    }}
                   />
                   {channels.map((ch, i) => (
                     <Scatter
                       key={ch.channel.id}
                       name={ch.channel.title}
-                      data={scatterData.filter(d => d.channelIdx === i)}
+                      data={velocityData.filter(d => d.channelIdx === i)}
                       fill={chartColors[i]}
                     />
                   ))}
                 </ScatterChart>
               </ChartContainer>
             </div>
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-2 px-2">
-              {channels.map((ch, i) => (
-                <div key={ch.channel.id} className="flex items-center gap-1.5">
-                  <div
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ background: chartColors[i] }}
+            <ChartLegend channels={channels} chartColors={chartColors} shape="circle" />
+          </TabsContent>
+
+          {/* Tab 3: Engagement trend */}
+          <TabsContent value="engagement">
+            <div className="mt-4">
+              <ChartContainer config={engagementConfig} className="min-h-[300px] w-full">
+                <LineChart data={engagementTimeline}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                  <XAxis
+                    dataKey="dateLabel"
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                    tickLine={false}
+                    axisLine={false}
                   />
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    {ch.channel.title}
-                  </span>
-                </div>
-              ))}
+                  <YAxis
+                    tickFormatter={(v) => `${v}%`}
+                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={50}
+                  />
+                  <ChartTooltip
+                    content={
+                      <CustomLineTooltip
+                        channels={channels}
+                        chartColors={chartColors}
+                        valueFormatter={(v) => `${v.toFixed(2)}%`}
+                        valueSuffix=""
+                      />
+                    }
+                  />
+                  {channels.map((_, i) => (
+                    <Line
+                      key={i}
+                      type="monotone"
+                      dataKey={`ch${i}`}
+                      stroke={chartColors[i]}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ChartContainer>
             </div>
+            <ChartLegend channels={channels} chartColors={chartColors} />
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Builds a unified timeline from multiple channels' videos.
+ * Each row has dateLabel + ch0, ch1, ch2 (nullable) so LineChart can render per-channel lines.
+ */
+function buildTimeline(
+  perChannel: { channel: ChannelInfo; videos: Video[] }[],
+  getValue: (v: Video) => number,
+  _key: string,
+): Record<string, unknown>[] {
+  // Collect all data points with timestamps
+  const points: { date: number; dateLabel: string; channelIdx: number; value: number; title: string }[] = []
+  perChannel.forEach((pc, ci) => {
+    for (const v of pc.videos) {
+      points.push({
+        date: new Date(v.publishedAt).getTime(),
+        dateLabel: format(new Date(v.publishedAt), 'MMM d'),
+        channelIdx: ci,
+        value: getValue(v),
+        title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+      })
+    }
+  })
+
+  // Sort by date
+  points.sort((a, b) => a.date - b.date)
+
+  // Each point becomes its own row, with only the relevant channel key filled
+  return points.map(p => {
+    const row: Record<string, unknown> = {
+      date: p.date,
+      dateLabel: p.dateLabel,
+      [`title${p.channelIdx}`]: p.title,
+    }
+    // Set value for this channel
+    row[`ch${p.channelIdx}`] = p.value
+    return row
+  })
+}
+
+function CustomLineTooltip({
+  active,
+  payload,
+  channels,
+  chartColors,
+  valueFormatter,
+  valueSuffix,
+}: {
+  active?: boolean
+  payload?: Array<{ dataKey?: string | number; value?: number; payload?: Record<string, unknown> }>
+  channels: ChannelData[]
+  chartColors: string[]
+  valueFormatter: (v: number) => string
+  valueSuffix: string
+}) {
+  if (!active || !payload?.length) return null
+
+  const data = payload[0]?.payload
+  if (!data) return null
+
+  return (
+    <div
+      className="rounded-lg border px-2.5 py-1.5 text-xs space-y-1"
+      style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+    >
+      <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
+        {data.dateLabel as string}
+      </p>
+      {channels.map((ch, i) => {
+        const val = data[`ch${i}`] as number | undefined
+        if (val == null) return null
+        const title = data[`title${i}`] as string | undefined
+        return (
+          <div key={ch.channel.id} className="flex items-center gap-1.5">
+            <div
+              className="h-2 w-2 rounded-full shrink-0"
+              style={{ background: chartColors[i] }}
+            />
+            <div>
+              {title && (
+                <p style={{ color: 'var(--text-primary)' }}>{title}</p>
+              )}
+              <p style={{ color: 'var(--text-secondary)' }}>
+                {valueFormatter(val)}{valueSuffix}
+              </p>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ChartLegend({
+  channels,
+  chartColors,
+  shape = 'square',
+}: {
+  channels: ChannelData[]
+  chartColors: string[]
+  shape?: 'square' | 'circle'
+}) {
+  return (
+    <div className="flex items-center gap-4 mt-2 px-2">
+      {channels.map((ch, i) => (
+        <div key={ch.channel.id} className="flex items-center gap-1.5">
+          <div
+            className={`h-2.5 w-2.5 ${shape === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
+            style={{ background: chartColors[i] }}
+          />
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {ch.channel.title}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
