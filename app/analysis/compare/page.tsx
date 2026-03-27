@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Minus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { Minus, TrendingUp, TrendingDown, Check } from 'lucide-react'
 import {
   CartesianGrid, XAxis, YAxis,
-  ScatterChart, Scatter, ZAxis,
   LineChart, Line,
+  BarChart, Bar,
 } from 'recharts'
-import { format } from 'date-fns'
+import { format, subMonths, startOfMonth } from 'date-fns'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
@@ -36,6 +36,8 @@ interface CompareResult {
   channelC?: ChannelData
   aiComparison: AIComparison
 }
+
+const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
 
 export default function ComparePage() {
   const searchParams = useSearchParams()
@@ -120,7 +122,6 @@ export default function ComparePage() {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      {/* Channel Selector — always interactive */}
       <ChannelSelector channels={selectorChannels} />
 
       {loading && <CompareLoadingSkeleton />}
@@ -133,25 +134,15 @@ export default function ComparePage() {
 
       {!loading && data && (
         <>
-          {/* Section 1: Channel Identity Row */}
           <ChannelIdentityRow channels={channels} />
-
-          {/* Section 2: Head-to-Head Scorecard */}
           <ScorecardTable channels={channels} />
-
-          {/* Section 3: Performance Charts */}
-          <PerformanceCharts channels={channels} />
-
-          {/* Section 4: Content Strategy Divergence */}
+          <ViewsOverTimeCard channels={channels} />
+          <EngagementTrendCard channels={channels} />
+          <UploadFrequencyCard channels={channels} />
+          <PerformanceConsistencyCard channels={channels} />
           <ContentStrategySection channels={channels} />
-
-          {/* Section 5: Engagement Quality */}
           <EngagementQualitySection channels={channels} />
-
-          {/* Section 6: Title Pattern Analysis */}
           <TitlePatternSection channels={channels} />
-
-          {/* Section 7: AI Competitive Intelligence */}
           <AIIntelligenceSection
             aiComparison={data.aiComparison}
             channels={channels}
@@ -184,10 +175,7 @@ function ChannelIdentityRow({ channels }: { channels: ChannelData[] }) {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <h2
-                className="text-base font-semibold truncate"
-                style={{ color: 'var(--text-primary)' }}
-              >
+              <h2 className="text-base font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {ch.channel.title}
               </h2>
               <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
@@ -242,14 +230,31 @@ const SCORECARD_METRICS: {
   { label: 'Momentum', key: 'momentumScore', format: (v) => `${v}/100`, higherIsBetter: true },
   { label: 'Upload Frequency', key: 'uploadFrequency', format: (v) => v as string, higherIsBetter: false },
   { label: 'Views Last 30d', key: 'totalViewsLast30d', format: (v) => formatNumber(v as number), higherIsBetter: true },
+  { label: 'Evergreen Score', key: '_evergreen', format: (v) => `${v}%`, higherIsBetter: true },
 ]
 
 function getMetricVal(ch: ChannelData, key: string): number | string {
   if (key === '_subs') return ch.channel.subscriberCount
+  if (key === '_evergreen') {
+    const totalViews = ch.videos.reduce((s, v) => s + v.viewCount, 0)
+    if (totalViews === 0) return 0
+    const olderViews = ch.videos.filter(v => v.daysLive > 90).reduce((s, v) => s + v.viewCount, 0)
+    return Math.round((olderViews / totalViews) * 100)
+  }
   return (ch.metrics as unknown as Record<string, number | string>)[key]
 }
 
+function computeRanks(nums: (number | null)[]): (number | null)[] {
+  const indexed = nums.map((n, i) => ({ n, i })).filter(x => x.n !== null) as { n: number; i: number }[]
+  indexed.sort((a, b) => b.n - a.n)
+  const ranks: (number | null)[] = nums.map(() => null)
+  indexed.forEach((x, rank) => { ranks[x.i] = rank + 1 })
+  return ranks
+}
+
 function ScorecardTable({ channels }: { channels: ChannelData[] }) {
+  const is3 = channels.length === 3
+
   return (
     <div
       className="rounded-xl border overflow-hidden"
@@ -276,12 +281,6 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
                   {ch.channel.title.length > 18 ? ch.channel.title.slice(0, 18) + '...' : ch.channel.title}
                 </th>
               ))}
-              <th className="text-center px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Gap
-              </th>
-              <th className="text-center px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Winner
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -293,49 +292,48 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
                 ? numericValues.indexOf(Math.max(...validNums))
                 : -1
               const allEqual = validNums.length > 1 && validNums.every(n => n === validNums[0])
-
-              // Gap calculation
-              let gapStr = ''
-              if (validNums.length >= 2 && !allEqual) {
-                const sorted = [...validNums].sort((a, b) => b - a)
-                const gap = sorted[0] - sorted[1]
-                const pct = sorted[1] > 0 ? ((gap / sorted[1]) * 100).toFixed(0) : '—'
-                gapStr = `${pct}%`
-              }
+              const ranks = is3 ? computeRanks(numericValues) : null
 
               return (
                 <tr key={metric.label} style={{ borderTop: '1px solid var(--border)' }}>
                   <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>
                     {metric.label}
                   </td>
-                  {values.map((val, i) => (
-                    <td
-                      key={channels[i].channel.id}
-                      className="text-right px-4 py-2.5 tabular-nums font-medium"
-                      style={{
-                        color: !allEqual && i === maxIdx
-                          ? 'var(--green-text)'
-                          : 'var(--text-primary)',
-                      }}
-                    >
-                      {metric.format(val)}
-                    </td>
-                  ))}
-                  <td
-                    className="text-center px-4 py-2.5 tabular-nums text-xs"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {gapStr}
-                  </td>
-                  <td className="text-center px-4 py-2.5 text-xs font-medium whitespace-nowrap">
-                    {allEqual ? (
-                      <span style={{ color: 'var(--text-muted)' }}>Tie</span>
-                    ) : maxIdx >= 0 ? (
-                      <span style={{ color: 'var(--green-text)' }}>
-                        {channels[maxIdx].channel.handle || channels[maxIdx].channel.title.slice(0, 14)}
-                      </span>
-                    ) : null}
-                  </td>
+                  {values.map((val, i) => {
+                    const isWinner = !allEqual && i === maxIdx
+                    const rank = ranks?.[i]
+                    return (
+                      <td
+                        key={channels[i].channel.id}
+                        className="text-right px-4 py-2.5 tabular-nums font-medium"
+                        style={{
+                          background: isWinner ? 'var(--green-subtle)' : 'transparent',
+                          color: isWinner ? 'var(--green-text)' : 'var(--text-primary)',
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-1.5 justify-end">
+                          {metric.format(val)}
+                          {/* 2-channel: checkmark for winner */}
+                          {!is3 && isWinner && (
+                            <Check size={12} style={{ color: 'var(--green-text)' }} />
+                          )}
+                          {/* 3-channel: rank badge */}
+                          {is3 && rank !== null && !allEqual && (
+                            <span
+                              className="text-[9px] font-semibold px-1 py-0.5 rounded"
+                              style={{
+                                background: rank === 1 ? 'var(--accent-subtle)' : 'transparent',
+                                color: rank === 1 ? 'var(--accent-text)' :
+                                  rank === 2 ? 'var(--text-secondary)' : 'var(--text-muted)',
+                              }}
+                            >
+                              {rank === 1 ? '1st' : rank === 2 ? '2nd' : '3rd'}
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                    )
+                  })}
                 </tr>
               )
             })}
@@ -346,310 +344,11 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
   )
 }
 
-/* ─── Section 3: Content Strategy Divergence ─── */
+/* ─── Chart helpers ─── */
 
-function ContentStrategySection({ channels }: { channels: ChannelData[] }) {
-  const strategies = channels.map(ch => ({
-    channel: ch.channel,
-    strategy: computeContentStrategy(ch.videos),
-  }))
-
-  const rows: { label: string; getValue: (s: ReturnType<typeof computeContentStrategy>) => string }[] = [
-    { label: 'Avg Duration', getValue: (s) => `${Math.floor(s.avgDurationSeconds / 60)}m ${s.avgDurationSeconds % 60}s` },
-    { label: 'Short-form (<4m)', getValue: (s) => `${s.shortFormPct}%` },
-    { label: 'Long-form (10m+)', getValue: (s) => `${s.longFormPct}%` },
-    { label: 'Avg Title Length', getValue: (s) => `${s.avgTitleLength} chars` },
-    { label: 'Question Titles', getValue: (s) => `${s.questionTitlePct}%` },
-    { label: 'Number in Title', getValue: (s) => `${s.numberTitlePct}%` },
-    { label: 'Uploads/Week', getValue: (s) => `${s.uploadsPerWeek}` },
-    { label: 'Consistency', getValue: (s) => s.consistencyLabel },
-  ]
-
-  return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-    >
-      <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Content Strategy Divergence
-        </h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          How each channel approaches content creation
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: 'var(--bg-app)' }}>
-              <th className="text-left px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Strategy
-              </th>
-              {strategies.map(s => (
-                <th
-                  key={s.channel.id}
-                  className="text-right px-4 py-2.5 font-medium"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {s.channel.title.length > 18 ? s.channel.title.slice(0, 18) + '...' : s.channel.title}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label} style={{ borderTop: '1px solid var(--border)' }}>
-                <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>
-                  {row.label}
-                </td>
-                {strategies.map(s => (
-                  <td
-                    key={s.channel.id}
-                    className="text-right px-4 py-2.5 tabular-nums"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    {row.getValue(s.strategy)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Section 3: Performance Charts ─── */
-
-function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
-  const chartColors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
-
-  // Prepare per-channel sorted videos (last 20, ascending by date)
-  const perChannel = channels.map(ch => {
-    const sorted = [...ch.videos]
-      .sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime())
-      .slice(-20)
-    return { channel: ch.channel, videos: sorted }
-  })
-
-  const viewsConfig: Record<string, { label: string; color: string }> = {}
-  channels.forEach((ch, i) => {
-    viewsConfig[`views${i}`] = { label: ch.channel.title, color: chartColors[i] }
-  })
-
-  // Tab 2: View velocity scatter — daysLive vs viewCount
-  const velocityData = channels.flatMap((ch, ci) =>
-    ch.videos.map(v => ({
-      channelIdx: ci,
-      channelName: ch.channel.title,
-      daysLive: v.daysLive,
-      views: v.viewCount,
-      title: v.title.length > 50 ? v.title.slice(0, 50) + '...' : v.title,
-      fill: chartColors[ci],
-    }))
-  )
-
-  const velocityConfig: Record<string, { label: string; color: string }> = {}
-  channels.forEach((ch, i) => {
-    velocityConfig[`velocity${i}`] = { label: ch.channel.title, color: chartColors[i] }
-  })
-
-  const engagementConfig: Record<string, { label: string; color: string }> = {}
-  channels.forEach((ch, i) => {
-    engagementConfig[`engagement${i}`] = { label: ch.channel.title, color: chartColors[i] }
-  })
-
-  const viewsTimeline = buildTimeline(perChannel, (v) => v.viewCount, 'value')
-  const engagementTimeline = buildTimeline(perChannel, (v) => v.engagementRate, 'value')
-
-  return (
-    <div
-      className="rounded-xl border"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-    >
-      <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Performance Comparison
-        </h3>
-      </div>
-      <div className="p-4">
-        <Tabs defaultValue="views">
-          <TabsList>
-            <TabsTrigger value="views">Views over time</TabsTrigger>
-            <TabsTrigger value="velocity">View velocity</TabsTrigger>
-            <TabsTrigger value="engagement">Engagement trend</TabsTrigger>
-          </TabsList>
-
-          {/* Tab 1: Views over time */}
-          <TabsContent value="views">
-            <div className="mt-4">
-              <ChartContainer config={viewsConfig} className="min-h-[300px] w-full">
-                <LineChart data={viewsTimeline}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis
-                    dataKey="dateLabel"
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tickFormatter={(v) => formatNumber(v)}
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={50}
-                  />
-                  <ChartTooltip
-                    content={
-                      <CustomLineTooltip
-                        channels={channels}
-                        chartColors={chartColors}
-                        valueFormatter={(v) => `${formatNumber(v)} views`}
-                      />
-                    }
-                  />
-                  {channels.map((_, i) => (
-                    <Line
-                      key={i}
-                      type="monotone"
-                      dataKey={`ch${i}`}
-                      stroke={chartColors[i]}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
-            </div>
-            <ChartLegend channels={channels} chartColors={chartColors} />
-          </TabsContent>
-
-          {/* Tab 2: View velocity */}
-          <TabsContent value="velocity">
-            <div className="mt-4">
-              <ChartContainer config={velocityConfig} className="min-h-[300px] w-full">
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis
-                    type="number"
-                    dataKey="daysLive"
-                    name="Days Old"
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="views"
-                    name="Views"
-                    tickFormatter={(v) => formatNumber(v)}
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={50}
-                  />
-                  <ZAxis range={[40, 40]} />
-                  <ChartTooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const d = payload[0].payload
-                      return (
-                        <div
-                          className="rounded-lg border px-2.5 py-1.5 text-xs space-y-0.5"
-                          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
-                        >
-                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {d.title}
-                          </p>
-                          <p style={{ color: 'var(--text-muted)' }}>
-                            {d.channelName}
-                          </p>
-                          <p style={{ color: 'var(--text-secondary)' }}>
-                            {formatNumber(d.views)} views
-                          </p>
-                          <p style={{ color: 'var(--text-muted)' }}>
-                            {d.daysLive} days old
-                          </p>
-                        </div>
-                      )
-                    }}
-                  />
-                  {channels.map((ch, i) => (
-                    <Scatter
-                      key={ch.channel.id}
-                      name={ch.channel.title}
-                      data={velocityData.filter(d => d.channelIdx === i)}
-                      fill={chartColors[i]}
-                    />
-                  ))}
-                </ScatterChart>
-              </ChartContainer>
-            </div>
-            <ChartLegend channels={channels} chartColors={chartColors} shape="circle" />
-          </TabsContent>
-
-          {/* Tab 3: Engagement trend */}
-          <TabsContent value="engagement">
-            <div className="mt-4">
-              <ChartContainer config={engagementConfig} className="min-h-[300px] w-full">
-                <LineChart data={engagementTimeline}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis
-                    dataKey="dateLabel"
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tickFormatter={(v) => `${v}%`}
-                    tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={50}
-                  />
-                  <ChartTooltip
-                    content={
-                      <CustomLineTooltip
-                        channels={channels}
-                        chartColors={chartColors}
-                        valueFormatter={(v) => `${v.toFixed(2)}% engagement`}
-                      />
-                    }
-                  />
-                  {channels.map((_, i) => (
-                    <Line
-                      key={i}
-                      type="monotone"
-                      dataKey={`ch${i}`}
-                      stroke={chartColors[i]}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
-            </div>
-            <ChartLegend channels={channels} chartColors={chartColors} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Builds a unified timeline from multiple channels' videos.
- * Each row has dateLabel + ch0, ch1, ch2 (nullable) so LineChart can render per-channel lines.
- */
 function buildTimeline(
   perChannel: { channel: ChannelInfo; videos: Video[] }[],
   getValue: (v: Video) => number,
-  _key: string,
 ): Record<string, unknown>[] {
   const points: { date: number; dateLabel: string; fullDate: string; channelIdx: number; channelName: string; value: number; title: string }[] = []
   perChannel.forEach((pc, ci) => {
@@ -665,9 +364,7 @@ function buildTimeline(
       })
     }
   })
-
   points.sort((a, b) => a.date - b.date)
-
   return points.map(p => {
     const row: Record<string, unknown> = {
       date: p.date,
@@ -695,7 +392,6 @@ function CustomLineTooltip({
   valueFormatter: (v: number) => string
 }) {
   if (!active || !payload?.length) return null
-
   const data = payload[0]?.payload
   if (!data) return null
 
@@ -712,23 +408,12 @@ function CustomLineTooltip({
         const channelName = data[`channelName${i}`] as string | undefined
         return (
           <div key={ch.channel.id} className="flex items-start gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full shrink-0 mt-0.5"
-              style={{ background: chartColors[i] }}
-            />
+            <div className="h-2 w-2 rounded-full shrink-0 mt-0.5" style={{ background: chartColors[i] }} />
             <div className="min-w-0">
-              {title && (
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{title}</p>
-              )}
-              {channelName && (
-                <p style={{ color: 'var(--text-muted)' }}>{channelName}</p>
-              )}
-              <p style={{ color: 'var(--text-secondary)' }}>
-                {valueFormatter(val)}
-              </p>
-              {fullDate && (
-                <p style={{ color: 'var(--text-muted)' }}>{fullDate}</p>
-              )}
+              {title && <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{title}</p>}
+              {channelName && <p style={{ color: 'var(--text-muted)' }}>{channelName}</p>}
+              <p style={{ color: 'var(--text-secondary)' }}>{valueFormatter(val)}</p>
+              {fullDate && <p style={{ color: 'var(--text-muted)' }}>{fullDate}</p>}
             </div>
           </div>
         )
@@ -737,205 +422,307 @@ function CustomLineTooltip({
   )
 }
 
-function ChartLegend({
-  channels,
-  chartColors,
-  shape = 'square',
-}: {
-  channels: ChannelData[]
-  chartColors: string[]
-  shape?: 'square' | 'circle'
-}) {
+function InlineChartLegend({ channels }: { channels: ChannelData[] }) {
   return (
     <div className="flex items-center gap-4 mt-2 px-2">
       {channels.map((ch, i) => (
         <div key={ch.channel.id} className="flex items-center gap-1.5">
-          <div
-            className={`h-2.5 w-2.5 ${shape === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
-            style={{ background: chartColors[i] }}
-          />
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {ch.channel.title}
-          </span>
+          <div className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_COLORS[i] }} />
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ch.channel.title}</span>
         </div>
       ))}
     </div>
   )
 }
 
-/* ─── Section 5: Title Pattern Analysis ─── */
-
-function TitlePatternSection({ channels }: { channels: ChannelData[] }) {
-  const patterns = channels.map(ch => ({
-    channel: ch.channel,
-    patterns: computeTitlePatterns(ch.videos),
-  }))
-
+function ChartCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
     <div
       className="rounded-xl border"
       style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
     >
       <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Title Pattern Analysis
-        </h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          Recurring words and formatting patterns in video titles
-        </p>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{description}</p>
       </div>
-      <div className={`grid gap-4 p-4 ${channels.length === 3 ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
-        {patterns.map(({ channel, patterns: p }) => (
-          <div key={channel.id} className="space-y-3">
-            <h4 className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              {channel.title}
-            </h4>
+      <div className="p-4">
+        {children}
+      </div>
+    </div>
+  )
+}
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 gap-2">
-              <MiniStat
-                label="Question titles"
-                value={`${p.hasQuestionMark.pct}%`}
-                sub={`${formatNumber(p.hasQuestionMark.avgViews)} avg views`}
-              />
-              <MiniStat
-                label="Number in title"
-                value={`${p.hasNumber.pct}%`}
-                sub={`${formatNumber(p.hasNumber.avgViews)} avg views`}
-              />
-              <MiniStat
-                label="Short titles (<=40)"
-                value={`${formatNumber(p.shortTitleAvgViews)}`}
-                sub="avg views"
-              />
-              <MiniStat
-                label="Long titles (>40)"
-                value={`${formatNumber(p.longTitleAvgViews)}`}
-                sub="avg views"
-              />
-            </div>
+/* ─── Card 1: Views over time ─── */
 
-            {/* Top words */}
-            {p.topWords.length > 0 && (
-              <div>
-                <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                  Top recurring words
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {p.topWords.slice(0, 8).map(w => (
-                    <span
-                      key={w.word}
-                      className="text-[10px] px-1.5 py-0.5 rounded"
-                      style={{ background: 'var(--bg-app)', color: 'var(--text-secondary)' }}
-                    >
-                      {w.word} ({w.count})
-                    </span>
+function ViewsOverTimeCard({ channels }: { channels: ChannelData[] }) {
+  const perChannel = channels.map(ch => ({
+    channel: ch.channel,
+    videos: [...ch.videos].sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()).slice(-20),
+  }))
+  const timeline = buildTimeline(perChannel, (v) => v.viewCount)
+  const config: Record<string, { label: string; color: string }> = {}
+  channels.forEach((ch, i) => { config[`ch${i}`] = { label: ch.channel.title, color: CHART_COLORS[i] } })
+
+  return (
+    <ChartCard title="Views over time" description="Last 20 videos per channel, sorted by publish date">
+      <ChartContainer config={config} className="min-h-[300px] w-full">
+        <LineChart data={timeline}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+          <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => formatNumber(v)} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={50} />
+          <ChartTooltip content={<CustomLineTooltip channels={channels} chartColors={CHART_COLORS} valueFormatter={(v) => `${formatNumber(v)} views`} />} />
+          {channels.map((_, i) => (
+            <Line key={i} type="monotone" dataKey={`ch${i}`} stroke={CHART_COLORS[i]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
+          ))}
+        </LineChart>
+      </ChartContainer>
+      <InlineChartLegend channels={channels} />
+    </ChartCard>
+  )
+}
+
+/* ─── Card 2: Engagement rate over time ─── */
+
+function EngagementTrendCard({ channels }: { channels: ChannelData[] }) {
+  const perChannel = channels.map(ch => ({
+    channel: ch.channel,
+    videos: [...ch.videos].sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()).slice(-20),
+  }))
+  const timeline = buildTimeline(perChannel, (v) => v.engagementRate)
+  const config: Record<string, { label: string; color: string }> = {}
+  channels.forEach((ch, i) => { config[`ch${i}`] = { label: ch.channel.title, color: CHART_COLORS[i] } })
+
+  return (
+    <ChartCard title="Engagement rate over time" description="Higher engagement means a more active and loyal audience">
+      <ChartContainer config={config} className="min-h-[300px] w-full">
+        <LineChart data={timeline}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+          <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={50} />
+          <ChartTooltip content={<CustomLineTooltip channels={channels} chartColors={CHART_COLORS} valueFormatter={(v) => `${v.toFixed(2)}% engagement`} />} />
+          {channels.map((_, i) => (
+            <Line key={i} type="monotone" dataKey={`ch${i}`} stroke={CHART_COLORS[i]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} connectNulls />
+          ))}
+        </LineChart>
+      </ChartContainer>
+      <InlineChartLegend channels={channels} />
+    </ChartCard>
+  )
+}
+
+/* ─── Card 3: Upload frequency by month ─── */
+
+function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
+  const now = new Date()
+  const months: { key: string; label: string; start: number; end: number }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const monthStart = startOfMonth(subMonths(now, i))
+    const monthEnd = i === 0 ? now : startOfMonth(subMonths(now, i - 1))
+    months.push({
+      key: format(monthStart, 'yyyy-MM'),
+      label: format(monthStart, 'MMM'),
+      start: monthStart.getTime(),
+      end: monthEnd.getTime(),
+    })
+  }
+
+  const barData = months.map(m => {
+    const point: Record<string, string | number> = { month: m.label }
+    channels.forEach((ch, ci) => {
+      const count = ch.videos.filter(v => {
+        const t = new Date(v.publishedAt).getTime()
+        return t >= m.start && t < m.end
+      }).length
+      point[`ch${ci}`] = count
+    })
+    return point
+  })
+
+  const config: Record<string, { label: string; color: string }> = {}
+  channels.forEach((ch, i) => { config[`ch${i}`] = { label: ch.channel.title, color: CHART_COLORS[i] } })
+
+  return (
+    <ChartCard title="Upload frequency by month" description="Shows whether each channel is ramping up or slowing down">
+      <ChartContainer config={config} className="min-h-[300px] w-full">
+        <BarChart data={barData} barGap={2}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={30} />
+          <ChartTooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null
+              return (
+                <div
+                  className="rounded-lg border px-2.5 py-1.5 text-xs space-y-1"
+                  style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
+                >
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{label}</p>
+                  {payload.map((p, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full" style={{ background: p.color }} />
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {config[p.dataKey as string]?.label}: {p.value} videos
+                      </span>
+                    </div>
                   ))}
                 </div>
+              )
+            }}
+          />
+          {channels.map((_, i) => (
+            <Bar key={i} dataKey={`ch${i}`} fill={CHART_COLORS[i]} radius={[4, 4, 0, 0]} />
+          ))}
+        </BarChart>
+      </ChartContainer>
+      <InlineChartLegend channels={channels} />
+    </ChartCard>
+  )
+}
+
+/* ─── Card 4: Performance consistency ─── */
+
+function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
+  return (
+    <ChartCard
+      title="Performance consistency"
+      description="A gradual drop-off means consistent performance. A single tall bar means the channel relies on viral outliers."
+    >
+      <div className="flex flex-col gap-4">
+        {channels.map((ch, ci) => {
+          const sorted = [...ch.videos]
+            .sort((a, b) => b.viewCount - a.viewCount)
+            .slice(0, 20)
+          const maxViews = sorted[0]?.viewCount ?? 1
+
+          const config: Record<string, { label: string; color: string }> = {
+            views: { label: 'Views', color: CHART_COLORS[ci] },
+          }
+
+          const barData = sorted.map(v => ({
+            title: v.title.length > 35 ? v.title.slice(0, 35) + '...' : v.title,
+            views: v.viewCount,
+            isTop: v.viewCount === maxViews,
+          }))
+
+          return (
+            <div key={ch.channel.id}>
+              {ci > 0 && <Separator className="mb-4" />}
+              <div className="flex items-center gap-2 mb-2">
+                <Avatar className="h-5 w-5 shrink-0">
+                  <AvatarImage src={ch.channel.thumbnailUrl} alt={ch.channel.title} />
+                  <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '8px' }}>
+                    {ch.channel.title.slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  {ch.channel.title}
+                </span>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div
-      className="rounded-lg p-2"
-      style={{ background: 'var(--bg-app)' }}
-    >
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
-        {value}
-      </p>
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub}</p>
-    </div>
-  )
-}
-
-/* ─── Section 6: AI Competitive Intelligence ─── */
-
-function AIIntelligenceSection({
-  aiComparison,
-  channels,
-}: {
-  aiComparison: AIComparison
-  channels: ChannelData[]
-}) {
-  return (
-    <div
-      className="rounded-xl border"
-      style={{ borderColor: 'var(--accent-subtle)', background: 'var(--bg-card)' }}
-    >
-      <div
-        className="p-4 border-b"
-        style={{ borderColor: 'var(--accent-subtle)', background: 'var(--accent-subtle)' }}
-      >
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--accent-text)' }}>
-          AI Competitive Intelligence
-        </h3>
-      </div>
-      <div className="p-4 space-y-4">
-        {/* Who is winning */}
-        {aiComparison.whoIsWinning && (
-          <div>
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-              Overall Assessment
-            </p>
-            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
-              {aiComparison.whoIsWinning}
-            </p>
-          </div>
-        )}
-
-        {/* Channel strengths */}
-        {Object.keys(aiComparison.channelStrengths).length > 0 && (
-          <div>
-            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
-              Key Strengths
-            </p>
-            <div className={`grid gap-3 ${channels.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-              {channels.map(ch => (
-                <div
-                  key={ch.channel.id}
-                  className="rounded-lg p-3"
-                  style={{ background: 'var(--bg-app)' }}
-                >
-                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    {ch.channel.title}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
-                    {aiComparison.channelStrengths[ch.channel.title] || 'No data available'}
-                  </p>
-                </div>
-              ))}
+              <ChartContainer config={config} className="min-h-[200px] w-full">
+                <BarChart data={barData} layout="vertical" barSize={14}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v) => formatNumber(v)}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="title"
+                    width={160}
+                    tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      const d = payload[0].payload
+                      return (
+                        <div
+                          className="rounded-lg border px-2.5 py-1.5 text-xs"
+                          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
+                        >
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.title}</p>
+                          <p style={{ color: 'var(--text-secondary)' }}>{formatNumber(d.views)} views</p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Bar
+                    dataKey="views"
+                    radius={[0, 4, 4, 0]}
+                    fill={CHART_COLORS[ci]}
+                    fillOpacity={0.7}
+                  />
+                </BarChart>
+              </ChartContainer>
             </div>
-          </div>
-        )}
+          )
+        })}
+      </div>
+    </ChartCard>
+  )
+}
 
-        {/* Gap opportunity */}
-        {aiComparison.gapOpportunity && (
-          <div
-            className="rounded-lg p-3 border"
-            style={{ borderColor: 'var(--accent-subtle)', background: 'var(--accent-subtle)' }}
-          >
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent-text)' }}>
-              Gap Opportunity
-            </p>
-            <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
-              {aiComparison.gapOpportunity}
-            </p>
-          </div>
-        )}
+/* ─── Content Strategy Divergence ─── */
+
+function ContentStrategySection({ channels }: { channels: ChannelData[] }) {
+  const strategies = channels.map(ch => ({
+    channel: ch.channel,
+    strategy: computeContentStrategy(ch.videos),
+  }))
+
+  const rows: { label: string; getValue: (s: ReturnType<typeof computeContentStrategy>) => string }[] = [
+    { label: 'Avg Duration', getValue: (s) => `${Math.floor(s.avgDurationSeconds / 60)}m ${s.avgDurationSeconds % 60}s` },
+    { label: 'Short-form (<4m)', getValue: (s) => `${s.shortFormPct}%` },
+    { label: 'Long-form (10m+)', getValue: (s) => `${s.longFormPct}%` },
+    { label: 'Avg Title Length', getValue: (s) => `${s.avgTitleLength} chars` },
+    { label: 'Question Titles', getValue: (s) => `${s.questionTitlePct}%` },
+    { label: 'Number in Title', getValue: (s) => `${s.numberTitlePct}%` },
+    { label: 'Uploads/Week', getValue: (s) => `${s.uploadsPerWeek}` },
+    { label: 'Consistency', getValue: (s) => s.consistencyLabel },
+  ]
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Content Strategy Divergence</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>How each channel approaches content creation</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: 'var(--bg-app)' }}>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Strategy</th>
+              {strategies.map(s => (
+                <th key={s.channel.id} className="text-right px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  {s.channel.title.length > 18 ? s.channel.title.slice(0, 18) + '...' : s.channel.title}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} style={{ borderTop: '1px solid var(--border)' }}>
+                <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>{row.label}</td>
+                {strategies.map(s => (
+                  <td key={s.channel.id} className="text-right px-4 py-2.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                    {row.getValue(s.strategy)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
 }
 
-/* ─── Section 7: Engagement Quality ─── */
+/* ─── Engagement Quality ─── */
 
 function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
   const stats = channels.map(ch => {
@@ -944,7 +731,6 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
     const totalComments = ch.videos.reduce((s, v) => s + v.commentCount, 0)
     const likeRate = totalViews > 0 ? (totalLikes / totalViews * 100) : 0
     const commentRate = totalViews > 0 ? (totalComments / totalViews * 100) : 0
-
     return {
       channel: ch.channel,
       likeRate,
@@ -964,37 +750,22 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
   ]
 
   return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-    >
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
       <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Engagement Quality
-        </h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          Like rate, comment rate, and overall engagement comparison
-        </p>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Engagement Quality</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Like rate, comment rate, and overall engagement comparison</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'var(--bg-app)' }}>
-              <th className="text-left px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Metric
-              </th>
+              <th className="text-left px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Metric</th>
               {stats.map(s => (
-                <th
-                  key={s.channel.id}
-                  className="text-right px-4 py-2.5 font-medium"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
+                <th key={s.channel.id} className="text-right px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
                   {s.channel.title.length > 18 ? s.channel.title.slice(0, 18) + '...' : s.channel.title}
                 </th>
               ))}
-              <th className="text-center px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Trend
-              </th>
+              <th className="text-center px-4 py-2.5 font-medium" style={{ color: 'var(--text-secondary)' }}>Trend</th>
             </tr>
           </thead>
           <tbody>
@@ -1003,21 +774,14 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
               const maxVal = Math.max(...nums)
               const maxIdx = nums.indexOf(maxVal)
               const allEqual = nums.every(n => n === nums[0])
-
               return (
                 <tr key={row.label} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>
-                    {row.label}
-                  </td>
+                  <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>{row.label}</td>
                   {stats.map((s, i) => (
                     <td
                       key={s.channel.id}
                       className="text-right px-4 py-2.5 tabular-nums font-medium"
-                      style={{
-                        color: !allEqual && i === maxIdx
-                          ? 'var(--green-text)'
-                          : 'var(--text-primary)',
-                      }}
+                      style={{ color: !allEqual && i === maxIdx ? 'var(--green-text)' : 'var(--text-primary)' }}
                     >
                       {row.getValue(s)}
                     </td>
@@ -1041,19 +805,108 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
   )
 }
 
+/* ─── Title Pattern Analysis ─── */
+
+function TitlePatternSection({ channels }: { channels: ChannelData[] }) {
+  const patterns = channels.map(ch => ({
+    channel: ch.channel,
+    patterns: computeTitlePatterns(ch.videos),
+  }))
+
+  return (
+    <div className="rounded-xl border" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+      <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Title Pattern Analysis</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Recurring words and formatting patterns in video titles</p>
+      </div>
+      <div className={`grid gap-4 p-4 ${channels.length === 3 ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
+        {patterns.map(({ channel, patterns: p }) => (
+          <div key={channel.id} className="space-y-3">
+            <h4 className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{channel.title}</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <MiniStat label="Question titles" value={`${p.hasQuestionMark.pct}%`} sub={`${formatNumber(p.hasQuestionMark.avgViews)} avg views`} />
+              <MiniStat label="Number in title" value={`${p.hasNumber.pct}%`} sub={`${formatNumber(p.hasNumber.avgViews)} avg views`} />
+              <MiniStat label="Short titles (<=40)" value={`${formatNumber(p.shortTitleAvgViews)}`} sub="avg views" />
+              <MiniStat label="Long titles (>40)" value={`${formatNumber(p.longTitleAvgViews)}`} sub="avg views" />
+            </div>
+            {p.topWords.length > 0 && (
+              <div>
+                <p className="text-[10px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Top recurring words</p>
+                <div className="flex flex-wrap gap-1">
+                  {p.topWords.slice(0, 8).map(w => (
+                    <span key={w.word} className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-app)', color: 'var(--text-secondary)' }}>
+                      {w.word} ({w.count})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-lg p-2" style={{ background: 'var(--bg-app)' }}>
+      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{value}</p>
+      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub}</p>
+    </div>
+  )
+}
+
+/* ─── AI Competitive Intelligence ─── */
+
+function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AIComparison; channels: ChannelData[] }) {
+  return (
+    <div className="rounded-xl border" style={{ borderColor: 'var(--accent-subtle)', background: 'var(--bg-card)' }}>
+      <div className="p-4 border-b" style={{ borderColor: 'var(--accent-subtle)', background: 'var(--accent-subtle)' }}>
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--accent-text)' }}>AI Competitive Intelligence</h3>
+      </div>
+      <div className="p-4 space-y-4">
+        {aiComparison.whoIsWinning && (
+          <div>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Overall Assessment</p>
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{aiComparison.whoIsWinning}</p>
+          </div>
+        )}
+        {Object.keys(aiComparison.channelStrengths).length > 0 && (
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Key Strengths</p>
+            <div className={`grid gap-3 ${channels.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+              {channels.map(ch => (
+                <div key={ch.channel.id} className="rounded-lg p-3" style={{ background: 'var(--bg-app)' }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>{ch.channel.title}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {aiComparison.channelStrengths[ch.channel.title] || 'No data available'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {aiComparison.gapOpportunity && (
+          <div className="rounded-lg p-3 border" style={{ borderColor: 'var(--accent-subtle)', background: 'var(--accent-subtle)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent-text)' }}>Gap Opportunity</p>
+            <p className="text-xs" style={{ color: 'var(--text-primary)' }}>{aiComparison.gapOpportunity}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Loading Skeleton ─── */
 
 function CompareLoadingSkeleton() {
   return (
     <div className="flex flex-col gap-6">
-      {/* Identity row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[0, 1].map(i => (
-          <div
-            key={i}
-            className="rounded-xl border p-5 flex items-center gap-4"
-            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-          >
+          <div key={i} className="rounded-xl border p-5 flex items-center gap-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
             <Skeleton className="h-14 w-14 rounded-full" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-36" />
@@ -1063,14 +916,9 @@ function CompareLoadingSkeleton() {
           </div>
         ))}
       </div>
-
-      {/* Scorecard */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
+      <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <Skeleton className="h-5 w-48 mb-4" />
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex justify-between py-2">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-4 w-20" />
@@ -1078,21 +926,13 @@ function CompareLoadingSkeleton() {
           </div>
         ))}
       </div>
-
-      {/* Chart */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
-        <Skeleton className="h-5 w-40 mb-4" />
-        <Skeleton className="h-[300px] w-full" />
-      </div>
-
-      {/* AI Section */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
+      {[0, 1, 2, 3].map(i => (
+        <div key={i} className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+          <Skeleton className="h-5 w-40 mb-4" />
+          <Skeleton className="h-[300px] w-full" />
+        </div>
+      ))}
+      <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
         <Skeleton className="h-5 w-48 mb-4" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4 mt-2" />
