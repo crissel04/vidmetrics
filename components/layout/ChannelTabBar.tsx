@@ -14,6 +14,7 @@ import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import {
   DndContext,
   closestCenter,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -22,10 +23,11 @@ import {
 import {
   SortableContext,
   horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
   useSortable,
   arrayMove,
 } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 
 export function ChannelTabBar() {
   const { tabs, addTab, removeTab, reorderTabs } = useChannelTabs()
@@ -34,7 +36,10 @@ export function ChannelTabBar() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 12 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   )
 
@@ -70,6 +75,7 @@ export function ChannelTabBar() {
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
+        modifiers={[restrictToHorizontalAxis]}
       >
         <SortableContext
           items={tabs.map(t => t.channelId)}
@@ -142,16 +148,19 @@ function SortableChannelTab({
   } = useSortable({ id: tab.channelId })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: transform
+      ? `translate3d(${Math.round(transform.x)}px, 0px, 0)`
+      : undefined,
     transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : 'auto' as const,
+    position: 'relative' as const,
   }
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="shrink-0">
       <div
-        className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150 relative"
+        className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150 relative${isDragging ? ' shadow-none ring-1 ring-[var(--accent)] ring-opacity-50' : ''}`}
         style={{
           background: isActive ? 'var(--bg-app)' : 'transparent',
           color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
