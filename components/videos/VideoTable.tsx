@@ -61,6 +61,7 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
       header: 'Title',
       cell: ({ row }) => (
         <ThumbnailPopover
+          videoId={row.original.id}
           thumbnailUrl={row.original.thumbnailUrl}
           title={row.original.title}
           duration={row.original.duration}
