@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, GitCompare, Clock, FileText } from 'lucide-react'
+import { BarChart2, FileText } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -17,11 +17,10 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { ThemeToggle } from './ThemeToggle'
+import { RecentSidebarGroup } from './RecentSidebarGroup'
 
 const navItems = [
   { title: 'Analysis', icon: BarChart2, href: '/' },
-  { title: 'Compare', icon: GitCompare, href: '/compare' },
-  { title: 'Recent', icon: Clock, href: '/recent' },
   { title: 'Reports', icon: FileText, href: '/report' },
 ]
 
@@ -64,6 +63,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <RecentSidebarGroup />
       </SidebarContent>
       <SidebarFooter className="p-4">
         <ThemeToggle />
