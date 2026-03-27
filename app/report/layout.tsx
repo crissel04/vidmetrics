@@ -11,5 +11,27 @@ export const metadata: Metadata = {
 }
 
 export default function ReportLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--bg-app)' }}>
+      <header
+        className="sticky top-0 z-10 px-6 py-3 flex items-center justify-between"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}
+      >
+        <span style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+          <span className="font-normal">Vid</span>
+          <span className="font-medium">Metrics</span>
+        </span>
+        <a
+          href="/"
+          className="text-sm hover:underline"
+          style={{ color: 'var(--accent)' }}
+        >
+          Analyze a channel →
+        </a>
+      </header>
+      <main className="max-w-[1280px] mx-auto px-6 py-8">
+        {children}
+      </main>
+    </div>
+  )
 }

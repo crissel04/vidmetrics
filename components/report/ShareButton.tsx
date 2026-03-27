@@ -20,9 +20,13 @@ export function ShareButton({ channel, videos, metrics }: ShareButtonProps) {
       metrics,
       generatedAt: new Date().toISOString(),
     }
+    const json = JSON.stringify(reportData)
+    console.log('[ShareButton] JSON length:', json.length)
     const encoded = encodeReportData(reportData)
+    console.log('[ShareButton] Compressed length:', encoded.length)
     const reportUrl = `${window.location.origin}/report?data=${encoded}`
-    console.log('[ShareButton] Report URL:', reportUrl)
+    console.log('[ShareButton] Full URL length:', reportUrl.length)
+    console.log('[ShareButton] URL preview:', reportUrl.substring(0, 100) + '...')
     await navigator.clipboard.writeText(reportUrl)
     toast('Report link copied to clipboard')
   }
