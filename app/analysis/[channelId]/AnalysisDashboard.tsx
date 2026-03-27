@@ -25,6 +25,8 @@ import { useRecentChannels } from '@/lib/context/RecentChannelsContext'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { exportToCSV } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
@@ -268,14 +270,114 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       {/* Content Gap Detector */}
       <ContentGapDetector insights={aiInsights} loading={aiLoading} />
 
-      {/* Video Table */}
-      <VideoTable
-        videos={videos}
-        onRowClick={(video) => {
-          setSelectedVideo(video)
-          setDeepDiveOpen(true)
-        }}
-      />
+      {/* Video Table — tabbed card */}
+      <Card id="videos" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
+        <CardHeader className="pb-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle
+                className="text-base font-semibold"
+                style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+              >
+                Videos
+              </CardTitle>
+              <CardDescription style={{ color: 'var(--text-muted)' }}>
+                {videos.length} most recent videos
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              style={{ borderColor: 'var(--border)' }}
+              onClick={() => {
+                exportToCSV(videos, channel.title)
+                toast('CSV export started')
+              }}
+            >
+              <Download size={14} />
+              Export CSV
+            </Button>
+          </div>
+        </CardHeader>
+
+        <Tabs defaultValue="table" className="w-full">
+          <div className="px-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+            <TabsList className="h-9 bg-transparent p-0 gap-0">
+              <TabsTrigger
+                value="table"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+              >
+                All videos
+              </TabsTrigger>
+              <TabsTrigger
+                value="top"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+              >
+                Top performers
+              </TabsTrigger>
+              <TabsTrigger
+                value="weak"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+              >
+                Underperforming
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="table" className="mt-0">
+            <VideoTable
+              videos={videos}
+              onRowClick={(video) => {
+                setSelectedVideo(video)
+                setDeepDiveOpen(true)
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="top" className="mt-0">
+            {videos.filter(v => v.performanceTier === 'hot' || v.performanceTier === 'rising').length > 0 ? (
+              <VideoTable
+                videos={[...videos]
+                  .filter(v => v.performanceTier === 'hot' || v.performanceTier === 'rising')
+                  .sort((a, b) => b.viewCount - a.viewCount)}
+                onRowClick={(video) => {
+                  setSelectedVideo(video)
+                  setDeepDiveOpen(true)
+                }}
+                hideFilters
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[200px] gap-2">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  No hot or rising videos in the current dataset
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="weak" className="mt-0">
+            {videos.filter(v => v.performanceTier === 'underperforming').length > 0 ? (
+              <VideoTable
+                videos={[...videos]
+                  .filter(v => v.performanceTier === 'underperforming')
+                  .sort((a, b) => a.viewCount - b.viewCount)}
+                onRowClick={(video) => {
+                  setSelectedVideo(video)
+                  setDeepDiveOpen(true)
+                }}
+                hideFilters
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[200px] gap-2">
+                <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>
+                  No underperforming videos detected — this channel performs consistently across its content
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </Card>
 
       {/* Video Deep Dive */}
       <VideoDeepDive
@@ -284,21 +386,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         open={deepDiveOpen}
         onOpenChange={setDeepDiveOpen}
       />
-
-      {/* Export CSV floating button */}
-      <div className="fixed bottom-6 right-6 z-20">
-        <Button
-          onClick={() => {
-            exportToCSV(videos, channel.title)
-            toast('CSV export started')
-          }}
-          className="gap-2"
-          style={{ background: 'var(--accent)', color: '#ffffff' }}
-        >
-          <Download size={16} />
-          Export CSV
-        </Button>
-      </div>
     </div>
   )
 }

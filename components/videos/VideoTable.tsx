@@ -40,9 +40,10 @@ import type { Video } from '@/lib/types'
 interface VideoTableProps {
   videos: Video[]
   onRowClick?: (video: Video) => void
+  hideFilters?: boolean
 }
 
-export function VideoTable({ videos, onRowClick }: VideoTableProps) {
+export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'publishedAt', desc: true }])
   const [globalFilter, setGlobalFilter] = useState('')
   const [timeFilter, setTimeFilter] = useState<'all' | '30d' | '90d'>('all')
@@ -178,43 +179,45 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
   const currentPage = table.getState().pagination.pageIndex
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] fade-in">
+    <div className="fade-in">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 p-4 border-b border-[var(--border-subtle)]">
-        {/* Time filter */}
-        <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
-          {(['all', '30d', '90d'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setTimeFilter(period)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium transition-colors duration-150',
-                timeFilter === period
-                  ? ''
-                  : ''
-              )}
-              style={{
-                background: timeFilter === period ? 'var(--accent-subtle)' : 'transparent',
-                color: timeFilter === period ? 'var(--accent-text)' : 'var(--text-secondary)',
-              }}
-            >
-              {period === 'all' ? 'All time' : period === '30d' ? 'Last 30d' : 'Last 90d'}
-            </button>
-          ))}
-        </div>
+      {!hideFilters && (
+        <div className="flex flex-wrap items-center gap-3 p-4 border-b border-[var(--border-subtle)]">
+          {/* Time filter */}
+          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
+            {(['all', '30d', '90d'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setTimeFilter(period)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium transition-colors duration-150',
+                  timeFilter === period
+                    ? ''
+                    : ''
+                )}
+                style={{
+                  background: timeFilter === period ? 'var(--accent-subtle)' : 'transparent',
+                  color: timeFilter === period ? 'var(--accent-text)' : 'var(--text-secondary)',
+                }}
+              >
+                {period === 'all' ? 'All time' : period === '30d' ? 'Last 30d' : 'Last 90d'}
+              </button>
+            ))}
+          </div>
 
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-          <Input
-            placeholder="Search videos..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9 h-8 text-sm"
-            style={{ borderColor: 'var(--border)' }}
-          />
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <Input
+              placeholder="Search videos..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9 h-8 text-sm"
+              style={{ borderColor: 'var(--border)' }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Table */}
       <ScrollArea className="w-full">
