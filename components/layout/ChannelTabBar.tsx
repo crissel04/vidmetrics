@@ -90,17 +90,21 @@ export function ChannelTabBar() {
       {tabs.length >= 2 && (
         <Link
           href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}${tabs[2] ? `&c=${tabs[2].channelId}` : ''}`}
-          className="flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150"
-          style={{
-            background: pathname === '/analysis/compare' ? 'var(--bg-app)' : 'transparent',
-            color: pathname === '/analysis/compare' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            borderBottom: pathname === '/analysis/compare' ? '2px solid var(--accent)' : '2px solid transparent',
+          className="flex items-center gap-1.5 shrink-0 px-1.5 py-1.5 rounded-t-md text-xs font-medium transition-all duration-150"
+          style={pathname === '/analysis/compare' ? {
+            background: 'var(--accent)',
+            color: '#ffffff',
+            borderBottom: '2px solid var(--accent)',
+          } : {
+            background: 'var(--accent-subtle)',
+            color: 'var(--accent-text)',
+            border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)',
           }}
           onMouseEnter={(e) => {
-            if (pathname !== '/analysis/compare') e.currentTarget.style.background = 'var(--bg-app)'
+            if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '0.8'
           }}
           onMouseLeave={(e) => {
-            if (pathname !== '/analysis/compare') e.currentTarget.style.background = 'transparent'
+            if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '1'
           }}
         >
           <GitCompare size={14} />
