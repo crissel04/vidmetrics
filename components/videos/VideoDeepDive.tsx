@@ -46,12 +46,12 @@ export function VideoDeepDive({ video, metrics, open, onOpenChange }: VideoDeepD
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-[480px] overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:w-[560px] sm:max-w-[560px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{video.title}</SheetTitle>
           <SheetDescription className="sr-only">Video deep dive analysis</SheetDescription>
         </SheetHeader>
-        <div className="px-4 pb-4">
+        <div className="flex flex-col gap-6 p-6 pb-10">
           {content}
         </div>
       </SheetContent>
@@ -73,7 +73,7 @@ function DeepDiveContent({ video, metrics }: { video: Video; metrics: ChannelMet
           alt={video.title}
           fill
           className="object-cover"
-          sizes="480px"
+          sizes="560px"
         />
       </div>
 
@@ -120,7 +120,7 @@ function DeepDiveContent({ video, metrics }: { video: Video; metrics: ChannelMet
         <h3 className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
           Estimated View Velocity (Modelled)
         </h3>
-        <ChartContainer config={chartConfig} className="h-[160px] w-full">
+        <ChartContainer config={chartConfig} className="h-[180px] w-full">
           <AreaChart data={velocityCurve}>
             <defs>
               <linearGradient id="velocityGradient" x1="0" y1="0" x2="0" y2="1">
