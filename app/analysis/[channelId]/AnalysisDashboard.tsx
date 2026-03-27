@@ -18,6 +18,7 @@ import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
 import { addRecentChannel } from '@/components/channel/RecentChannels'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
+import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,9 +32,10 @@ interface ChannelData {
 }
 
 export function AnalysisDashboard({ channelId }: { channelId: string }) {
-  const [data, setData] = useState<ChannelData | null>(null)
+  const channelCache = useChannelCache()
+  const [data, setData] = useState<ChannelData | null>(() => channelCache.get(channelId) ?? null)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!channelCache.has(channelId))
   const [aiInsights, setAiInsights] = useState<AIInsights | null>(null)
   const [aiLoading, setAiLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
@@ -41,6 +43,35 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const { addTab } = useChannelTabs()
 
   useEffect(() => {
+    // If cached, use it immediately — no fetch needed
+    if (channelCache.has(channelId)) {
+      const cached = channelCache.get(channelId)!
+      setData(cached)
+      setLoading(false)
+      setError('')
+
+      // Still update recent channels and tabs
+      addRecentChannel({
+        channelId: cached.channel.id,
+        title: cached.channel.title,
+        handle: cached.channel.handle,
+        thumbnailUrl: cached.channel.thumbnailUrl,
+        subscriberCount: cached.channel.subscriberCount,
+        analyzedAt: new Date().toISOString(),
+      })
+      addTab({
+        channelId: cached.channel.id,
+        title: cached.channel.title,
+        handle: cached.channel.handle,
+        thumbnailUrl: cached.channel.thumbnailUrl,
+      })
+      return
+    }
+
+    // Not cached — fetch from API
+    setLoading(true)
+    setError('')
+
     async function fetchData() {
       try {
         const res = await fetch(
@@ -54,6 +85,8 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           return
         }
 
+        // Store in cache
+        channelCache.set(channelId, json)
         setData(json)
         setLoading(false)
 
@@ -80,7 +113,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       }
     }
     fetchData()
-  }, [channelId, addTab])
+  }, [channelId, addTab, channelCache])
 
   if (error) {
     return (

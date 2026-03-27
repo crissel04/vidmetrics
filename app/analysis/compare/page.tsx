@@ -17,6 +17,7 @@ import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
 import { ChannelSelector } from '@/components/compare/ChannelSelector'
+import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 interface ChannelData {
@@ -45,6 +46,7 @@ export default function ComparePage() {
   const channelAId = searchParams.get('a')
   const channelBId = searchParams.get('b')
   const channelCId = searchParams.get('c')
+  const channelCache = useChannelCache()
 
   const [data, setData] = useState<CompareResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,6 +89,13 @@ export default function ComparePage() {
           return
         }
 
+        // Pre-populate channel cache so tab switches are instant
+        const results = [json.channelA, json.channelB]
+        if (json.channelC) results.push(json.channelC)
+        results.forEach((r: ChannelData) => {
+          channelCache.set(r.channel.id, r)
+        })
+
         setData(json)
       } catch {
         if (!cancelled) setError('Network error — please try again')
@@ -97,7 +106,7 @@ export default function ComparePage() {
     fetchComparison()
 
     return () => { cancelled = true }
-  }, [channelAId, channelBId, channelCId])
+  }, [channelAId, channelBId, channelCId, channelCache])
 
   if (error && !data) {
     return (

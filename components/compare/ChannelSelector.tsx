@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useChannelTabs, type ChannelTab } from '@/lib/hooks/useChannelTabs'
+import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import { toast } from 'sonner'
 
 interface SelectedChannel {
@@ -144,6 +145,7 @@ function AddChannelPopover({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { tabs, addTab } = useChannelTabs()
+  const channelCache = useChannelCache()
 
   const availableTabs = tabs.filter(t => !selectedIds.includes(t.channelId))
 
@@ -169,6 +171,13 @@ function AddChannelPopover({
         setLoading(false)
         return
       }
+
+      // Pre-populate cache so navigation is instant
+      channelCache.set(data.channel.id, {
+        channel: data.channel,
+        videos: data.videos,
+        metrics: data.metrics,
+      })
 
       // Add to tabs so it persists
       addTab({

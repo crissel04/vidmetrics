@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
+import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 
 export function ChannelTabBar() {
   const { tabs, addTab, removeTab } = useChannelTabs()
@@ -125,6 +126,7 @@ function AddChannelPopover({
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const channelCache = useChannelCache()
 
   const handleSubmit = async () => {
     if (!url.trim()) return
@@ -143,6 +145,13 @@ function AddChannelPopover({
         setLoading(false)
         return
       }
+
+      // Pre-populate cache so navigation is instant
+      channelCache.set(data.channel.id, {
+        channel: data.channel,
+        videos: data.videos,
+        metrics: data.metrics,
+      })
 
       onAdd({
         channelId: data.channel.id,
