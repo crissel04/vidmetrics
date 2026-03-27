@@ -292,13 +292,13 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
                   className={cn(!table.getCanPreviousPage() && 'pointer-events-none opacity-50')}
                 />
               </PaginationItem>
-              {Array.from({ length: Math.min(pageCount, 5) }).map((_, i) => (
-                <PaginationItem key={i}>
+              {getPageRange(currentPage, pageCount).map((page) => (
+                <PaginationItem key={page}>
                   <PaginationLink
-                    onClick={() => table.setPageIndex(i)}
-                    isActive={currentPage === i}
+                    onClick={() => table.setPageIndex(page)}
+                    isActive={currentPage === page}
                   >
-                    {i + 1}
+                    {page + 1}
                   </PaginationLink>
                 </PaginationItem>
               ))}
@@ -314,4 +314,10 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
       )}
     </div>
   )
+}
+
+function getPageRange(current: number, total: number): number[] {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i)
+  const start = Math.max(0, Math.min(current - 2, total - 5))
+  return Array.from({ length: 5 }, (_, i) => start + i)
 }

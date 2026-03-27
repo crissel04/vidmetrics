@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    if (path.startsWith('/api/insights')) {
+    if (path.startsWith('/api/insights') || path.startsWith('/api/compare')) {
       const { success } = await insightsRatelimit.limit(ip)
       if (!success) {
         return NextResponse.json(

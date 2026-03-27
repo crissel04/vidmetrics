@@ -42,7 +42,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
         channelId: channel.id,
         channelTitle: channel.title,
         subscriberCount: channel.subscriberCount,
-        videos: videos.slice(0, 20).map(v => ({
+        videos: videos.slice(0, 30).map(v => ({
           id: v.id,
           title: v.title,
           viewCount: v.viewCount,

@@ -23,8 +23,11 @@ function readTabs(): ChannelTab[] {
 }
 
 function writeTabs(tabs: ChannelTab[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
-  // Notify other hook instances in the same tab
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
+  } catch {
+    // localStorage full or unavailable (private browsing) — degrade gracefully
+  }
   window.dispatchEvent(new Event(SYNC_EVENT))
 }
 

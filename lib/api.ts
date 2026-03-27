@@ -65,7 +65,8 @@ export async function withErrorHandler(
   } catch (err) {
     console.error('[API Error]', err)
     if (err instanceof Error) {
-      return createErrorResponse(err.message, 500)
+      const status = (err as Error & { status?: number }).status ?? 500
+      return createErrorResponse(err.message, status)
     }
     return createErrorResponse('An unexpected error occurred', 500)
   }

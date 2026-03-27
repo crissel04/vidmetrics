@@ -69,7 +69,11 @@ export function RecentChannelsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loaded) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recents))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(recents))
+    } catch {
+      // localStorage full or unavailable (private browsing) — degrade gracefully
+    }
   }, [recents, loaded])
 
   const addRecent = useCallback((channel: RecentChannel) => {

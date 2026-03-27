@@ -50,6 +50,10 @@ export function ChannelSelector({ channels }: ChannelSelectorProps) {
 
   const handleAdd = (channelId: string) => {
     if (selectedIds.length >= 3) return
+    if (selectedIds.includes(channelId)) {
+      toast('This channel is already in the comparison')
+      return
+    }
     const params = new URLSearchParams()
     ;[...selectedIds, channelId].forEach((id, i) => {
       const key = ['a', 'b', 'c'][i]

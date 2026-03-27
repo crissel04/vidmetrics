@@ -15,7 +15,7 @@ export const insightsBodySchema = z.object({
     engagementRate: z.number(),
     daysLive: z.number(),
     duration: z.string(),
-  })).min(1).max(50),
+  })).min(1).max(200),
   metrics: z.object({
     avgViews: z.number(),
     avgEngagementRate: z.number(),

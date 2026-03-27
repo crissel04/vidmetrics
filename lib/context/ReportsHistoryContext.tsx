@@ -48,7 +48,11 @@ export function ReportsHistoryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loaded) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(reports))
+    } catch {
+      // localStorage full or unavailable (private browsing) — degrade gracefully
+    }
   }, [reports, loaded])
 
   const addReport = useCallback((entry: ReportEntry) => {
