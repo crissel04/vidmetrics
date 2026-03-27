@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Share2 } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { ComparePanel } from '@/components/compare/ComparePanel'
+import { CopyHandleButton } from '@/components/ui/CopyHandleButton'
 import type { ChannelInfo } from '@/lib/types'
 
 interface ChannelHeaderProps {
@@ -33,9 +34,12 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
             </h1>
             <div className="flex items-center gap-1.5 mt-1">
               {channel.handle && (
-                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {channel.handle}
-                </span>
+                <>
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {channel.handle}
+                  </span>
+                  <CopyHandleButton handle={channel.handle} />
+                </>
               )}
               {channel.country && (
                 <span className="text-sm" style={{ color: 'var(--text-muted)' }}>

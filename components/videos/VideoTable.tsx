@@ -32,6 +32,7 @@ import { ArrowUp, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNumber, formatDate, formatDuration } from '@/lib/utils'
 import { TrendingBadge } from '@/components/insights/TrendingBadge'
+import { ThumbnailPopover } from '@/components/videos/ThumbnailPopover'
 import type { Video } from '@/lib/types'
 
 interface VideoTableProps {
@@ -57,9 +58,15 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
       accessorKey: 'title',
       header: 'Title',
       cell: ({ row }) => (
-        <span className="truncate max-w-[300px] block text-sm">
-          {row.original.title}
-        </span>
+        <ThumbnailPopover
+          thumbnailUrl={row.original.thumbnailUrl}
+          title={row.original.title}
+          duration={row.original.duration}
+        >
+          <span className="truncate max-w-[300px] block text-sm">
+            {row.original.title}
+          </span>
+        </ThumbnailPopover>
       ),
     },
     {
