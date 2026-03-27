@@ -280,6 +280,10 @@ function computeContentSignals(video: Video, metrics: ChannelMetrics): ContentSi
   }
 }
 
+// TODO V2: Replace modelled velocity curve with real time-series data.
+// Currently we model view accumulation based on performance tier (hot/average/etc.)
+// because the YouTube API does not expose historical view counts per video.
+// A real implementation would snapshot view counts daily via a cron job.
 function computeVelocityCurve(video: Video): { day: number; views: number }[] {
   const totalViews = video.viewCount
   const tier = video.performanceTier
