@@ -12,6 +12,9 @@ import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
 import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
 import { AIInsightsPanel } from '@/components/insights/AIInsightsPanel'
 import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
+import { TopTakeaways } from '@/components/insights/TopTakeaways'
+import { DurationInsight } from '@/components/insights/DurationInsight'
+import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -107,11 +110,20 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         uploadDayCounts={computeUploadDayCounts(videos)}
       />
 
+      {/* Niche Benchmark */}
+      <NicheBenchmark metrics={metrics} />
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ViewsChart videos={videos} />
         <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
       </div>
+
+      {/* Duration Insight */}
+      <DurationInsight videos={videos} />
+
+      {/* Top Takeaways */}
+      <TopTakeaways videos={videos} metrics={metrics} />
 
       {/* Heatmap */}
       <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
