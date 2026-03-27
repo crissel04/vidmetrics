@@ -10,6 +10,7 @@ import {
   CartesianGrid, XAxis, YAxis,
   LineChart, Line,
   BarChart, Bar,
+  ReferenceLine,
 } from 'recharts'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
@@ -526,6 +527,23 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
     })
   }
 
+  // Check empty state: each channel needs >= 3 videos in the last 6 months
+  const sixMonthsAgo = months[0].start
+  const tooSparse = channels.filter(ch => {
+    const recentCount = ch.videos.filter(v => new Date(v.publishedAt).getTime() >= sixMonthsAgo).length
+    return recentCount < 3
+  })
+
+  if (tooSparse.length > 0) {
+    return (
+      <ChartCard title="Upload frequency by month" description="Shows whether each channel is ramping up or slowing down">
+        <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>
+          Not enough video data for {tooSparse.map(ch => ch.channel.title).join(', ')} to render this chart.
+        </p>
+      </ChartCard>
+    )
+  }
+
   const barData = months.map(m => {
     const point: Record<string, string | number> = { month: m.label }
     channels.forEach((ch, ci) => {
@@ -536,6 +554,12 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
       point[`ch${ci}`] = count
     })
     return point
+  })
+
+  // Compute average videos/month per channel for reference lines
+  const avgPerMonth = channels.map((ch, ci) => {
+    const total = barData.reduce((sum, d) => sum + (d[`ch${ci}`] as number), 0)
+    return total / 6
   })
 
   const config: Record<string, { label: string; color: string }> = {}
@@ -572,6 +596,21 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
           {channels.map((_, i) => (
             <Bar key={i} dataKey={`ch${i}`} fill={CHART_COLORS[i]} radius={[4, 4, 0, 0]} />
           ))}
+          {channels.map((_, i) => (
+            <ReferenceLine
+              key={`avg-${i}`}
+              y={avgPerMonth[i]}
+              stroke={CHART_COLORS[i]}
+              strokeDasharray="4 4"
+              strokeOpacity={0.7}
+              label={{
+                value: 'Avg',
+                position: 'right',
+                fill: 'var(--text-muted)',
+                fontSize: 10,
+              }}
+            />
+          ))}
         </BarChart>
       </ChartContainer>
       <InlineChartLegend channels={channels} />
@@ -582,6 +621,22 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
 /* ─── Card 4: Performance consistency ─── */
 
 function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
+  // Check empty state: each channel needs >= 5 videos
+  const tooSparse = channels.filter(ch => ch.videos.length < 5)
+
+  if (tooSparse.length > 0) {
+    return (
+      <ChartCard
+        title="Performance consistency"
+        description="A gradual drop-off means consistent performance. A single tall bar means the channel relies on viral outliers."
+      >
+        <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>
+          Not enough video data for {tooSparse.map(ch => ch.channel.title).join(', ')} to render this chart.
+        </p>
+      </ChartCard>
+    )
+  }
+
   return (
     <ChartCard
       title="Performance consistency"
@@ -592,7 +647,6 @@ function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
           const sorted = [...ch.videos]
             .sort((a, b) => b.viewCount - a.viewCount)
             .slice(0, 20)
-          const maxViews = sorted[0]?.viewCount ?? 1
 
           const config: Record<string, { label: string; color: string }> = {
             views: { label: 'Views', color: CHART_COLORS[ci] },
@@ -601,8 +655,9 @@ function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
           const barData = sorted.map(v => ({
             title: v.title.length > 35 ? v.title.slice(0, 35) + '...' : v.title,
             views: v.viewCount,
-            isTop: v.viewCount === maxViews,
           }))
+
+          const avgViews = sorted.reduce((sum, v) => sum + v.viewCount, 0) / sorted.length
 
           return (
             <div key={ch.channel.id}>
@@ -649,6 +704,17 @@ function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
                           <p style={{ color: 'var(--text-secondary)' }}>{formatNumber(d.views)} views</p>
                         </div>
                       )
+                    }}
+                  />
+                  <ReferenceLine
+                    x={avgViews}
+                    stroke="var(--border-strong)"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: 'Channel avg',
+                      position: 'top',
+                      fill: 'var(--text-muted)',
+                      fontSize: 10,
                     }}
                   />
                   <Bar
