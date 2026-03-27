@@ -31,6 +31,18 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "VidMetrics",
   description: "YouTube intelligence for creators and agencies",
+  openGraph: {
+    title: "VidMetrics — YouTube Competitor Intelligence",
+    description: "Paste any YouTube channel URL. Get instant performance metrics, AI insights, and content gap analysis.",
+    url: process.env.NEXT_PUBLIC_APP_URL ?? "https://vidmetrics.vercel.app",
+    siteName: "VidMetrics",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VidMetrics — YouTube Competitor Intelligence",
+    description: "Paste any YouTube channel URL. Get instant performance metrics, AI insights, and content gap analysis.",
+  },
 };
 
 export default async function RootLayout({
