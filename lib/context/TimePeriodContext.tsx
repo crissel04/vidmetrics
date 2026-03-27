@@ -4,6 +4,7 @@ import {
   createContext, useContext, useState, useCallback,
   type ReactNode,
 } from 'react'
+import { useSettings } from '@/lib/context/SettingsContext'
 
 export type TimePeriod = '30d' | '90d' | '6m' | '1y' | 'all'
 
@@ -44,7 +45,8 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
 }
 
 export function TimePeriodProvider({ children }: { children: ReactNode }) {
-  const [period, setPeriod] = useState<TimePeriod>('all')
+  const { settings } = useSettings()
+  const [period, setPeriod] = useState<TimePeriod>(settings.defaultTimePeriod)
 
   const filterVideos = useCallback(<T extends { publishedAt: string }>(videos: T[]): T[] => {
     const cutoff = getPeriodCutoff(period)

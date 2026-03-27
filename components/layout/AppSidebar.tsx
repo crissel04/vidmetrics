@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart2, FileText, Bookmark } from 'lucide-react'
+import { House, BarChart2, FileText, Bookmark, Settings2 } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +16,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { ThemeToggle } from './ThemeToggle'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
 import { useReportsHistory } from '@/lib/context/ReportsHistoryContext'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
@@ -88,14 +87,23 @@ export function AppSidebar() {
                   }
                 />
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === '/settings'}
+                  render={
+                    <Link href="/settings">
+                      <Settings2 size={16} />
+                      <span>Settings</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <RecentSidebarGroup />
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <ThemeToggle />
-      </SidebarFooter>
+      <SidebarFooter className="p-4" />
       <SidebarRail />
     </Sidebar>
   )

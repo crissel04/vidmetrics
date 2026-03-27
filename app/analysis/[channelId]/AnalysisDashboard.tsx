@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { useTimePeriod } from '@/lib/context/TimePeriodContext'
 import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
+import { useSettings } from '@/lib/context/SettingsContext'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -46,6 +47,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const { addTab } = useChannelTabs()
   const { addRecent } = useRecentChannels()
   const { updateLastAnalyzed } = useWatchlist()
+  const { settings } = useSettings()
 
   useEffect(() => {
     // If cached, use it immediately — no fetch needed
@@ -85,7 +87,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     async function fetchData() {
       try {
         const res = await fetch(
-          `/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}`
+          `/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}&maxVideos=${settings.videosToFetch}`
         )
         const json = await res.json()
 
@@ -130,7 +132,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed])
+  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch])
 
   const { filterVideos, period, setPeriod } = useTimePeriod()
 

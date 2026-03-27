@@ -13,6 +13,7 @@ import { ChannelCacheProvider } from "@/lib/context/ChannelCacheContext";
 import { RecentChannelsProvider } from "@/lib/context/RecentChannelsContext";
 import { ReportsHistoryProvider } from "@/lib/context/ReportsHistoryContext";
 import { WatchlistProvider } from "@/lib/context/WatchlistContext";
+import { SettingsProvider } from "@/lib/context/SettingsContext";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -66,6 +67,7 @@ export default async function RootLayout({
               <RecentChannelsProvider>
               <ReportsHistoryProvider>
               <WatchlistProvider>
+              <SettingsProvider>
               <AppSidebar />
               <SidebarInset>
                 <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
@@ -82,6 +84,7 @@ export default async function RootLayout({
                   {children}
                 </main>
               </SidebarInset>
+              </SettingsProvider>
               </WatchlistProvider>
               </ReportsHistoryProvider>
               </RecentChannelsProvider>

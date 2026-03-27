@@ -33,8 +33,14 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('Channel not found', 404)
     }
 
+    // Read optional maxVideos param (default 200, clamped to valid values)
+    const maxVideosRaw = parseInt(searchParams.get('maxVideos') ?? '200', 10)
+    const maxVideos = [50, 100, 200].includes(maxVideosRaw)
+      ? (maxVideosRaw as 50 | 100 | 200)
+      : 200
+
     // Fetch channel data with 1-hour cache via unstable_cache
-    const { channelInfo, rawVideos } = await getCachedChannelData(channelId)
+    const { channelInfo, rawVideos } = await getCachedChannelData(channelId, maxVideos)
 
     // Compute all metrics server-side
     const { videos, metrics } = computeAllMetrics(rawVideos, channelInfo)
