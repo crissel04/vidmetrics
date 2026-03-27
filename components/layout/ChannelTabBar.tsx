@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { X, Plus, GitCompare, Loader2 } from 'lucide-react'
+import { X, Plus, GitCompare, Loader2, ExternalLink } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
@@ -70,9 +71,26 @@ export function ChannelTabBar() {
                 {tab.title.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="truncate max-w-[16ch]">
+            <span className="truncate max-w-[18ch]">
               {tab.handle || tab.title}
             </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <a
+                    href={`https://www.youtube.com/channel/${tab.channelId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                    style={{ color: 'var(--text-muted)' }}
+                  />
+                }
+              >
+                <ExternalLink size={11} />
+              </TooltipTrigger>
+              <TooltipContent>View on YouTube</TooltipContent>
+            </Tooltip>
             <button
               onClick={(e) => handleRemove(tab.channelId, e)}
               className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
