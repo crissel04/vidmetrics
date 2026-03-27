@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 const STORAGE_KEY = 'vidmetrics_tabs'
 const MAX_TABS = 5
+const SYNC_EVENT = 'vidmetrics_tabs_sync'
 
 export interface ChannelTab {
   channelId: string
@@ -12,45 +13,52 @@ export interface ChannelTab {
   thumbnailUrl: string
 }
 
+function readTabs(): ChannelTab[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function writeTabs(tabs: ChannelTab[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs))
+  // Notify other hook instances in the same tab
+  window.dispatchEvent(new Event(SYNC_EVENT))
+}
+
 export function useChannelTabs() {
   const [tabs, setTabs] = useState<ChannelTab[]>([])
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      try {
-        setTabs(JSON.parse(stored))
-      } catch {
-        setTabs([])
-      }
+    setTabs(readTabs())
+
+    const handleSync = () => setTabs(readTabs())
+    window.addEventListener(SYNC_EVENT, handleSync)
+    window.addEventListener('storage', handleSync)
+    return () => {
+      window.removeEventListener(SYNC_EVENT, handleSync)
+      window.removeEventListener('storage', handleSync)
     }
   }, [])
 
-  const persist = useCallback((next: ChannelTab[]) => {
-    setTabs(next)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  }, [])
-
   const addTab = useCallback((tab: ChannelTab) => {
-    setTabs((prev) => {
-      const filtered = prev.filter((t) => t.channelId !== tab.channelId)
-      const next = [tab, ...filtered].slice(0, MAX_TABS)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      return next
-    })
+    const prev = readTabs()
+    const filtered = prev.filter((t) => t.channelId !== tab.channelId)
+    const next = [tab, ...filtered].slice(0, MAX_TABS)
+    writeTabs(next)
   }, [])
 
   const removeTab = useCallback((channelId: string) => {
-    setTabs((prev) => {
-      const next = prev.filter((t) => t.channelId !== channelId)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      return next
-    })
+    const prev = readTabs()
+    const next = prev.filter((t) => t.channelId !== channelId)
+    writeTabs(next)
   }, [])
 
   const clearTabs = useCallback(() => {
-    persist([])
-  }, [persist])
+    writeTabs([])
+  }, [])
 
   return { tabs, addTab, removeTab, clearTabs }
 }
