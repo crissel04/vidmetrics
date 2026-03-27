@@ -399,18 +399,6 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
     return { channel: ch.channel, videos: sorted }
   })
 
-  // Tab 1: Views over time — one data point per video, keyed by date
-  const viewsLineData = perChannel.flatMap((pc, ci) =>
-    pc.videos.map(v => ({
-      date: new Date(v.publishedAt).getTime(),
-      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
-      [`views${ci}`]: v.viewCount,
-      [`title${ci}`]: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
-    }))
-  ).sort((a, b) => a.date - b.date)
-
-  // Merge points with same date into single rows so lines connect properly
-  // Each channel gets its own line — use separate data arrays per channel
   const viewsConfig: Record<string, { label: string; color: string }> = {}
   channels.forEach((ch, i) => {
     viewsConfig[`views${i}`] = { label: ch.channel.title, color: chartColors[i] }
@@ -420,9 +408,10 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
   const velocityData = channels.flatMap((ch, ci) =>
     ch.videos.map(v => ({
       channelIdx: ci,
+      channelName: ch.channel.title,
       daysLive: v.daysLive,
       views: v.viewCount,
-      title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+      title: v.title.length > 50 ? v.title.slice(0, 50) + '...' : v.title,
       fill: chartColors[ci],
     }))
   )
@@ -432,33 +421,11 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
     velocityConfig[`velocity${i}`] = { label: ch.channel.title, color: chartColors[i] }
   })
 
-  // Tab 3: Engagement trend — same structure as views but Y = engagementRate
-  const engagementLineData = perChannel.flatMap((pc, ci) =>
-    pc.videos.map(v => ({
-      date: new Date(v.publishedAt).getTime(),
-      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
-      [`engagement${ci}`]: v.engagementRate,
-      [`title${ci}`]: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
-    }))
-  ).sort((a, b) => a.date - b.date)
-
   const engagementConfig: Record<string, { label: string; color: string }> = {}
   channels.forEach((ch, i) => {
     engagementConfig[`engagement${i}`] = { label: ch.channel.title, color: chartColors[i] }
   })
 
-  // Build per-channel line data for views (each channel needs its own array for LineChart)
-  const viewsPerChannel = perChannel.map((pc, ci) =>
-    pc.videos.map(v => ({
-      date: new Date(v.publishedAt).getTime(),
-      dateLabel: format(new Date(v.publishedAt), 'MMM d'),
-      views: v.viewCount,
-      title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
-      channelName: pc.channel.title,
-    }))
-  )
-
-  // Merge all into unified timeline for views
   const viewsTimeline = buildTimeline(perChannel, (v) => v.viewCount, 'value')
   const engagementTimeline = buildTimeline(perChannel, (v) => v.engagementRate, 'value')
 
@@ -504,8 +471,7 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
                       <CustomLineTooltip
                         channels={channels}
                         chartColors={chartColors}
-                        valueFormatter={(v) => formatNumber(v)}
-                        valueSuffix=" views"
+                        valueFormatter={(v) => `${formatNumber(v)} views`}
                       />
                     }
                   />
@@ -558,14 +524,20 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
                       const d = payload[0].payload
                       return (
                         <div
-                          className="rounded-lg border px-2.5 py-1.5 text-xs"
-                          style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                          className="rounded-lg border px-2.5 py-1.5 text-xs space-y-0.5"
+                          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
                         >
                           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
                             {d.title}
                           </p>
                           <p style={{ color: 'var(--text-muted)' }}>
-                            {formatNumber(d.views)} views &middot; {d.daysLive} days old
+                            {d.channelName}
+                          </p>
+                          <p style={{ color: 'var(--text-secondary)' }}>
+                            {formatNumber(d.views)} views
+                          </p>
+                          <p style={{ color: 'var(--text-muted)' }}>
+                            {d.daysLive} days old
                           </p>
                         </div>
                       )
@@ -609,8 +581,7 @@ function PerformanceCharts({ channels }: { channels: ChannelData[] }) {
                       <CustomLineTooltip
                         channels={channels}
                         chartColors={chartColors}
-                        valueFormatter={(v) => `${v.toFixed(2)}%`}
-                        valueSuffix=""
+                        valueFormatter={(v) => `${v.toFixed(2)}% engagement`}
                       />
                     }
                   />
@@ -646,31 +617,31 @@ function buildTimeline(
   getValue: (v: Video) => number,
   _key: string,
 ): Record<string, unknown>[] {
-  // Collect all data points with timestamps
-  const points: { date: number; dateLabel: string; channelIdx: number; value: number; title: string }[] = []
+  const points: { date: number; dateLabel: string; fullDate: string; channelIdx: number; channelName: string; value: number; title: string }[] = []
   perChannel.forEach((pc, ci) => {
     for (const v of pc.videos) {
       points.push({
         date: new Date(v.publishedAt).getTime(),
         dateLabel: format(new Date(v.publishedAt), 'MMM d'),
+        fullDate: format(new Date(v.publishedAt), 'MMM d, yyyy'),
         channelIdx: ci,
+        channelName: pc.channel.title,
         value: getValue(v),
-        title: v.title.length > 40 ? v.title.slice(0, 40) + '...' : v.title,
+        title: v.title.length > 50 ? v.title.slice(0, 50) + '...' : v.title,
       })
     }
   })
 
-  // Sort by date
   points.sort((a, b) => a.date - b.date)
 
-  // Each point becomes its own row, with only the relevant channel key filled
   return points.map(p => {
     const row: Record<string, unknown> = {
       date: p.date,
       dateLabel: p.dateLabel,
       [`title${p.channelIdx}`]: p.title,
+      [`fullDate${p.channelIdx}`]: p.fullDate,
+      [`channelName${p.channelIdx}`]: p.channelName,
     }
-    // Set value for this channel
     row[`ch${p.channelIdx}`] = p.value
     return row
   })
@@ -682,14 +653,12 @@ function CustomLineTooltip({
   channels,
   chartColors,
   valueFormatter,
-  valueSuffix,
 }: {
   active?: boolean
   payload?: Array<{ dataKey?: string | number; value?: number; payload?: Record<string, unknown> }>
   channels: ChannelData[]
   chartColors: string[]
   valueFormatter: (v: number) => string
-  valueSuffix: string
 }) {
   if (!active || !payload?.length) return null
 
@@ -698,29 +667,34 @@ function CustomLineTooltip({
 
   return (
     <div
-      className="rounded-lg border px-2.5 py-1.5 text-xs space-y-1"
-      style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+      className="rounded-lg border px-2.5 py-1.5 text-xs space-y-2"
+      style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
     >
-      <p className="font-medium" style={{ color: 'var(--text-muted)' }}>
-        {data.dateLabel as string}
-      </p>
       {channels.map((ch, i) => {
         const val = data[`ch${i}`] as number | undefined
         if (val == null) return null
         const title = data[`title${i}`] as string | undefined
+        const fullDate = data[`fullDate${i}`] as string | undefined
+        const channelName = data[`channelName${i}`] as string | undefined
         return (
-          <div key={ch.channel.id} className="flex items-center gap-1.5">
+          <div key={ch.channel.id} className="flex items-start gap-1.5">
             <div
-              className="h-2 w-2 rounded-full shrink-0"
+              className="h-2 w-2 rounded-full shrink-0 mt-0.5"
               style={{ background: chartColors[i] }}
             />
-            <div>
+            <div className="min-w-0">
               {title && (
-                <p style={{ color: 'var(--text-primary)' }}>{title}</p>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{title}</p>
+              )}
+              {channelName && (
+                <p style={{ color: 'var(--text-muted)' }}>{channelName}</p>
               )}
               <p style={{ color: 'var(--text-secondary)' }}>
-                {valueFormatter(val)}{valueSuffix}
+                {valueFormatter(val)}
               </p>
+              {fullDate && (
+                <p style={{ color: 'var(--text-muted)' }}>{fullDate}</p>
+              )}
             </div>
           </div>
         )
