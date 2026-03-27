@@ -86,7 +86,7 @@ export function ChannelTabBar() {
       {/* Compare tab — only when 2+ tabs */}
       {tabs.length >= 2 && (
         <Link
-          href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}`}
+          href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}${tabs[2] ? `&c=${tabs[2].channelId}` : ''}`}
           className="flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-t-md text-xs font-medium transition-colors duration-150"
           style={{
             background: pathname === '/analysis/compare' ? 'var(--bg-app)' : 'transparent',

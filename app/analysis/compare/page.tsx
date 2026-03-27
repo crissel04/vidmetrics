@@ -15,6 +15,7 @@ import { format } from 'date-fns'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
+import { ChannelSelector } from '@/components/compare/ChannelSelector'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 interface ChannelData {
@@ -103,6 +104,16 @@ export default function ComparePage() {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
+      {/* Channel Selector */}
+      <ChannelSelector
+        channels={channels.map(ch => ({
+          channelId: ch.channel.id,
+          title: ch.channel.title,
+          handle: ch.channel.handle,
+          thumbnailUrl: ch.channel.thumbnailUrl,
+        }))}
+      />
+
       {/* Section 1: Channel Identity Row */}
       <ChannelIdentityRow channels={channels} />
 
