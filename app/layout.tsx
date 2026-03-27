@@ -15,6 +15,8 @@ import { ReportsHistoryProvider } from "@/lib/context/ReportsHistoryContext";
 import { WatchlistProvider } from "@/lib/context/WatchlistContext";
 import { SettingsProvider } from "@/lib/context/SettingsContext";
 import { GlobalKeyboardShortcuts } from "@/components/layout/GlobalKeyboardShortcuts";
+import { AuthProvider } from "@/lib/context/AuthContext";
+import UserButton from "@/components/auth/UserButton";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -61,6 +63,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        <AuthProvider>
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
           <TooltipProvider delay={300}>
             <SidebarProvider defaultOpen={sidebarOpen}>
@@ -79,6 +82,7 @@ export default async function RootLayout({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <ThemeToggle />
+                    <UserButton />
                   </div>
                 </header>
                 <main className="flex flex-1 flex-col gap-6 p-6">
@@ -95,6 +99,7 @@ export default async function RootLayout({
           </TooltipProvider>
           <Toaster />
         </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

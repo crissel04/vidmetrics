@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, Loader2, BarChart2, Target, TrendingUp } from 'lucide-react'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { RecentChannels } from '@/components/channel/RecentChannels'
@@ -18,6 +19,13 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'auth_failed') {
+      toast.error('Sign in failed. Please try again.')
+    }
+  }, [searchParams])
 
   async function handleAnalyze() {
     setError('')
