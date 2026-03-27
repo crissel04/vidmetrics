@@ -50,9 +50,14 @@ export default function ComparePage() {
   useEffect(() => {
     if (!channelAId || !channelBId) {
       setError('Two channel IDs are required for comparison')
+      setData(null)
       setLoading(false)
       return
     }
+
+    let cancelled = false
+    setLoading(true)
+    setError('')
 
     async function fetchComparison() {
       try {
@@ -69,7 +74,9 @@ export default function ComparePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyData),
         })
+        if (cancelled) return
         const json = await res.json()
+        if (cancelled) return
 
         if (!res.ok) {
           setError(json.error || 'Comparison failed')
@@ -79,15 +86,17 @@ export default function ComparePage() {
 
         setData(json)
       } catch {
-        setError('Network error — please try again')
+        if (!cancelled) setError('Network error — please try again')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchComparison()
+
+    return () => { cancelled = true }
   }, [channelAId, channelBId, channelCId])
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <p style={{ color: 'var(--red-text)' }}>{error}</p>
@@ -95,48 +104,60 @@ export default function ComparePage() {
     )
   }
 
-  if (loading || !data) {
+  if (!data && loading) {
     return <CompareLoadingSkeleton />
   }
 
-  const channels = [data.channelA, data.channelB]
-  if (data.channelC) channels.push(data.channelC)
+  const channels = data ? [data.channelA, data.channelB] : []
+  if (data?.channelC) channels.push(data.channelC)
+
+  const selectorChannels = channels.map(ch => ({
+    channelId: ch.channel.id,
+    title: ch.channel.title,
+    handle: ch.channel.handle,
+    thumbnailUrl: ch.channel.thumbnailUrl,
+  }))
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      {/* Channel Selector */}
-      <ChannelSelector
-        channels={channels.map(ch => ({
-          channelId: ch.channel.id,
-          title: ch.channel.title,
-          handle: ch.channel.handle,
-          thumbnailUrl: ch.channel.thumbnailUrl,
-        }))}
-      />
+      {/* Channel Selector — always interactive */}
+      <ChannelSelector channels={selectorChannels} />
 
-      {/* Section 1: Channel Identity Row */}
-      <ChannelIdentityRow channels={channels} />
+      {loading && <CompareLoadingSkeleton />}
 
-      {/* Section 2: Head-to-Head Scorecard */}
-      <ScorecardTable channels={channels} />
+      {!loading && !data && error && (
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <p style={{ color: 'var(--red-text)' }}>{error}</p>
+        </div>
+      )}
 
-      {/* Section 3: Performance Charts */}
-      <PerformanceCharts channels={channels} />
+      {!loading && data && (
+        <>
+          {/* Section 1: Channel Identity Row */}
+          <ChannelIdentityRow channels={channels} />
 
-      {/* Section 4: Content Strategy Divergence */}
-      <ContentStrategySection channels={channels} />
+          {/* Section 2: Head-to-Head Scorecard */}
+          <ScorecardTable channels={channels} />
 
-      {/* Section 5: Engagement Quality */}
-      <EngagementQualitySection channels={channels} />
+          {/* Section 3: Performance Charts */}
+          <PerformanceCharts channels={channels} />
 
-      {/* Section 6: Title Pattern Analysis */}
-      <TitlePatternSection channels={channels} />
+          {/* Section 4: Content Strategy Divergence */}
+          <ContentStrategySection channels={channels} />
 
-      {/* Section 7: AI Competitive Intelligence */}
-      <AIIntelligenceSection
-        aiComparison={data.aiComparison}
-        channels={channels}
-      />
+          {/* Section 5: Engagement Quality */}
+          <EngagementQualitySection channels={channels} />
+
+          {/* Section 6: Title Pattern Analysis */}
+          <TitlePatternSection channels={channels} />
+
+          {/* Section 7: AI Competitive Intelligence */}
+          <AIIntelligenceSection
+            aiComparison={data.aiComparison}
+            channels={channels}
+          />
+        </>
+      )}
     </div>
   )
 }
