@@ -8,6 +8,12 @@ import { formatNumber } from '@/lib/utils'
 
 const anthropic = new Anthropic()
 
+interface ChannelResult {
+  channel: Omit<Parameters<typeof computeAllMetrics>[1], 'uploadsPlaylistId'>
+  videos: ReturnType<typeof computeAllMetrics>['videos']
+  metrics: ReturnType<typeof computeAllMetrics>['metrics']
+}
+
 export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
     const body = await request.json()
@@ -19,53 +25,83 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { channelAUrl, channelBUrl } = parsed.data
+    const { channelAUrl, channelBUrl, channelCUrl } = parsed.data
 
-    // Resolve both channel IDs in parallel
-    const [channelAId, channelBId] = await Promise.all([
-      resolveChannelId(channelAUrl),
-      resolveChannelId(channelBUrl),
-    ])
+    // Resolve channel IDs in parallel
+    const urlsToResolve = [channelAUrl, channelBUrl]
+    if (channelCUrl) urlsToResolve.push(channelCUrl)
 
-    // Fetch both channels in parallel
-    const [dataA, dataB] = await Promise.all([
-      getCachedChannelData(channelAId),
-      getCachedChannelData(channelBId),
-    ])
+    const channelIds = await Promise.all(urlsToResolve.map(resolveChannelId))
 
-    const resultA = computeAllMetrics(dataA.rawVideos, dataA.channelInfo)
-    const resultB = computeAllMetrics(dataB.rawVideos, dataB.channelInfo)
+    // Fetch all channels in parallel
+    const rawData = await Promise.all(channelIds.map(getCachedChannelData))
 
-    const { uploadsPlaylistId: _a, ...channelA } = dataA.channelInfo
-    const { uploadsPlaylistId: _b, ...channelB } = dataB.channelInfo
+    const results: ChannelResult[] = rawData.map(d => {
+      const result = computeAllMetrics(d.rawVideos, d.channelInfo)
+      const { uploadsPlaylistId: _, ...channel } = d.channelInfo
+      return { channel, videos: result.videos, metrics: result.metrics }
+    })
 
-    // Generate AI comparison summary (non-streaming, short)
-    let aiSummary = ''
+    // Generate AI comparison — structured JSON
+    let aiComparison: {
+      whoIsWinning: string
+      channelStrengths: Record<string, string>
+      gapOpportunity: string
+    } = {
+      whoIsWinning: '',
+      channelStrengths: {},
+      gapOpportunity: '',
+    }
+
     try {
-      const prompt = `Compare these two YouTube channels in 2-3 sentences. Be specific about who is winning and why.
+      const channelSummaries = results.map((r, i) => {
+        const label = String.fromCharCode(65 + i) // A, B, C
+        return `Channel ${label}: ${r.channel.title} (${formatNumber(r.channel.subscriberCount)} subs, ${formatNumber(r.metrics.avgViews)} avg views, ${r.metrics.avgEngagementRate.toFixed(2)}% engagement, momentum ${r.metrics.momentumScore}/100 [${r.metrics.momentumLabel}], uploads ${r.metrics.uploadFrequency})`
+      }).join('\n')
 
-Channel A: ${channelA.title} (${formatNumber(channelA.subscriberCount)} subs, ${formatNumber(resultA.metrics.avgViews)} avg views, ${resultA.metrics.avgEngagementRate.toFixed(2)}% engagement, momentum ${resultA.metrics.momentumScore}/100)
-Channel B: ${channelB.title} (${formatNumber(channelB.subscriberCount)} subs, ${formatNumber(resultB.metrics.avgViews)} avg views, ${resultB.metrics.avgEngagementRate.toFixed(2)}% engagement, momentum ${resultB.metrics.momentumScore}/100)
+      const prompt = `Analyze these YouTube channels competitively.
 
-Respond with just the comparison paragraph, no JSON.`
+${channelSummaries}
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "whoIsWinning": "1-2 sentence summary of which channel is winning overall and why",
+  "channelStrengths": {
+    "${results[0].channel.title}": "1 sentence about this channel's key strength",
+    "${results[1].channel.title}": "1 sentence about this channel's key strength"${results[2] ? `,\n    "${results[2].channel.title}": "1 sentence about this channel's key strength"` : ''}
+  },
+  "gapOpportunity": "1-2 sentences about the biggest opportunity or gap between these channels that a creator could exploit"
+}
+
+No markdown, no code blocks, just the JSON object.`
 
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 256,
+        max_tokens: 512,
         messages: [{ role: 'user', content: prompt }],
       })
 
       if (response.content[0].type === 'text') {
-        aiSummary = response.content[0].text
+        aiComparison = JSON.parse(response.content[0].text)
       }
     } catch {
-      aiSummary = 'AI comparison unavailable.'
+      aiComparison = {
+        whoIsWinning: 'AI comparison unavailable.',
+        channelStrengths: {},
+        gapOpportunity: '',
+      }
     }
 
-    return NextResponse.json({
-      channelA: { channel: channelA, videos: resultA.videos, metrics: resultA.metrics },
-      channelB: { channel: channelB, videos: resultB.videos, metrics: resultB.metrics },
-      aiSummary,
-    })
+    // Build response with named keys
+    const responseData: Record<string, unknown> = {
+      channelA: results[0],
+      channelB: results[1],
+      aiComparison,
+    }
+    if (results[2]) {
+      responseData.channelC = results[2]
+    }
+
+    return NextResponse.json(responseData)
   })
 }

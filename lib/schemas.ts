@@ -28,4 +28,5 @@ export const insightsBodySchema = z.object({
 export const compareBodySchema = z.object({
   channelAUrl: z.string().url(),
   channelBUrl: z.string().url(),
+  channelCUrl: z.string().url().optional(),
 })

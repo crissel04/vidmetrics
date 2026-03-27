@@ -315,6 +315,151 @@ export function computeAllMetrics(
   return { videos, metrics }
 }
 
+/**
+ * Computes content strategy metrics from a channel's videos.
+ * Used in the Compare page "Content Strategy Divergence" section.
+ */
+export function computeContentStrategy(videos: Video[]): {
+  avgDurationSeconds: number
+  shortFormPct: number
+  longFormPct: number
+  avgTitleLength: number
+  questionTitlePct: number
+  numberTitlePct: number
+  uploadsPerWeek: number
+  consistencyLabel: string
+} {
+  if (videos.length === 0) {
+    return {
+      avgDurationSeconds: 0,
+      shortFormPct: 0,
+      longFormPct: 0,
+      avgTitleLength: 0,
+      questionTitlePct: 0,
+      numberTitlePct: 0,
+      uploadsPerWeek: 0,
+      consistencyLabel: 'N/A',
+    }
+  }
+
+  const totalDuration = videos.reduce((s, v) => s + v.durationSeconds, 0)
+  const avgDurationSeconds = Math.round(totalDuration / videos.length)
+  const shortForm = videos.filter(v => v.durationSeconds < 240) // < 4 min
+  const longForm = videos.filter(v => v.durationSeconds >= 600) // >= 10 min
+  const shortFormPct = parseFloat(((shortForm.length / videos.length) * 100).toFixed(1))
+  const longFormPct = parseFloat(((longForm.length / videos.length) * 100).toFixed(1))
+
+  const avgTitleLength = Math.round(videos.reduce((s, v) => s + v.title.length, 0) / videos.length)
+  const questionTitles = videos.filter(v => /\?/.test(v.title))
+  const numberTitles = videos.filter(v => /\d/.test(v.title))
+  const questionTitlePct = parseFloat(((questionTitles.length / videos.length) * 100).toFixed(1))
+  const numberTitlePct = parseFloat(((numberTitles.length / videos.length) * 100).toFixed(1))
+
+  const now = Date.now()
+  const day90 = 90 * 24 * 60 * 60 * 1000
+  const recentCount = videos.filter(v => now - new Date(v.publishedAt).getTime() <= day90).length
+  const uploadsPerWeek = parseFloat((recentCount / 13).toFixed(1))
+
+  const consistency = computeUploadConsistency(videos)
+  const consistencyLabel = consistency.label
+
+  return {
+    avgDurationSeconds,
+    shortFormPct,
+    longFormPct,
+    avgTitleLength,
+    questionTitlePct,
+    numberTitlePct,
+    uploadsPerWeek,
+    consistencyLabel,
+  }
+}
+
+/**
+ * Analyzes title patterns to find common words and formats in video titles.
+ * Returns the top recurring words (excluding stop words) and format patterns.
+ */
+export function computeTitlePatterns(videos: Video[]): {
+  topWords: { word: string; count: number; avgViews: number }[]
+  hasQuestionMark: { pct: number; avgViews: number }
+  hasNumber: { pct: number; avgViews: number }
+  avgTitleLength: number
+  shortTitleAvgViews: number
+  longTitleAvgViews: number
+} {
+  const stopWords = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+    'should', 'may', 'might', 'can', 'to', 'of', 'in', 'for', 'on', 'with',
+    'at', 'by', 'from', 'and', 'or', 'but', 'not', 'no', 'if', 'this',
+    'that', 'it', 'its', 'my', 'your', 'our', 'we', 'you', 'i', 'me',
+    'so', 'just', 'how', 'what', 'why', 'when', 'who', 'which', 'where',
+    'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other',
+    'some', 'such', 'than', 'too', 'very', 'one', 'two', 'new', 'get',
+    'got', 'about', 'up', 'out', 'into', 'over', 'after', 'before',
+  ])
+
+  // Word frequency analysis
+  const wordMap = new Map<string, { count: number; totalViews: number }>()
+  for (const v of videos) {
+    const words = v.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/)
+    const seen = new Set<string>()
+    for (const w of words) {
+      if (w.length < 3 || stopWords.has(w) || seen.has(w)) continue
+      seen.add(w)
+      const entry = wordMap.get(w) ?? { count: 0, totalViews: 0 }
+      entry.count++
+      entry.totalViews += v.viewCount
+      wordMap.set(w, entry)
+    }
+  }
+
+  const topWords = [...wordMap.entries()]
+    .filter(([, v]) => v.count >= 2)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 10)
+    .map(([word, { count, totalViews }]) => ({
+      word,
+      count,
+      avgViews: Math.round(totalViews / count),
+    }))
+
+  // Question mark analysis
+  const questionVideos = videos.filter(v => /\?/.test(v.title))
+  const nonQuestionVideos = videos.filter(v => !/\?/.test(v.title))
+  const hasQuestionMark = {
+    pct: videos.length > 0 ? parseFloat(((questionVideos.length / videos.length) * 100).toFixed(1)) : 0,
+    avgViews: questionVideos.length > 0
+      ? Math.round(questionVideos.reduce((s, v) => s + v.viewCount, 0) / questionVideos.length)
+      : 0,
+  }
+
+  // Number analysis
+  const numberVideos = videos.filter(v => /\d/.test(v.title))
+  const hasNumber = {
+    pct: videos.length > 0 ? parseFloat(((numberVideos.length / videos.length) * 100).toFixed(1)) : 0,
+    avgViews: numberVideos.length > 0
+      ? Math.round(numberVideos.reduce((s, v) => s + v.viewCount, 0) / numberVideos.length)
+      : 0,
+  }
+
+  // Title length analysis
+  const avgTitleLength = videos.length > 0
+    ? Math.round(videos.reduce((s, v) => s + v.title.length, 0) / videos.length)
+    : 0
+
+  const shortTitleVideos = videos.filter(v => v.title.length <= 40)
+  const longTitleVideos = videos.filter(v => v.title.length > 40)
+  const shortTitleAvgViews = shortTitleVideos.length > 0
+    ? Math.round(shortTitleVideos.reduce((s, v) => s + v.viewCount, 0) / shortTitleVideos.length)
+    : 0
+  const longTitleAvgViews = longTitleVideos.length > 0
+    ? Math.round(longTitleVideos.reduce((s, v) => s + v.viewCount, 0) / longTitleVideos.length)
+    : 0
+
+  return { topWords, hasQuestionMark, hasNumber, avgTitleLength, shortTitleAvgViews, longTitleAvgViews }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
