@@ -13,12 +13,17 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ channel, videos, metrics }: ShareButtonProps) {
-  const handleShare = () => {
-    const data = { channel, videos, metrics }
-    const encoded = encodeReportData(data)
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const reportUrl = `${appUrl}/report?data=${encoded}`
-    navigator.clipboard.writeText(reportUrl)
+  const handleShare = async () => {
+    const reportData = {
+      channel,
+      videos,
+      metrics,
+      generatedAt: new Date().toISOString(),
+    }
+    const encoded = encodeReportData(reportData)
+    const reportUrl = `${window.location.origin}/report?data=${encoded}`
+    console.log('[ShareButton] Report URL:', reportUrl)
+    await navigator.clipboard.writeText(reportUrl)
     toast('Report link copied to clipboard')
   }
 
