@@ -290,7 +290,7 @@ function ReportFetcher({ channelId }: { channelId: string }) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ViewsChart videos={videos} />
+        <ViewsChart videos={videos} metrics={metrics} />
         <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
       </div>
 

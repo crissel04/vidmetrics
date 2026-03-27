@@ -1,41 +1,36 @@
 'use client'
 
-import { ScatterChart, Scatter, CartesianGrid, XAxis, YAxis, ReferenceLine, Cell } from 'recharts'
+import { ScatterChart, Scatter, CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { formatNumber } from '@/lib/utils'
-import type { Video, ChannelMetrics } from '@/lib/types'
-
-const tierColors: Record<string, string> = {
-  hot: 'var(--green)',
-  rising: 'var(--chart-1)',
-  average: 'var(--text-muted)',
-  underperforming: 'var(--red)',
-}
-
-const tierLabels: Record<string, string> = {
-  hot: 'Hot',
-  rising: 'Rising',
-  average: 'Average',
-  underperforming: 'Underperforming',
-}
+import type { Video } from '@/lib/types'
 
 const chartConfig = {
-  views: { label: 'Views', color: 'var(--chart-1)' },
+  views: { label: 'Views', color: 'var(--chart-2)' },
 }
 
-interface ViewsChartProps {
+function formatDurationFromSeconds(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+interface DurationVsViewsProps {
   videos: Video[]
-  metrics: ChannelMetrics
 }
 
-export function ViewsChart({ videos, metrics }: ViewsChartProps) {
-  const data = videos.map(v => ({
-    daysLive: v.daysLive,
-    views: v.viewCount,
-    tier: v.performanceTier,
-    title: v.title.length > 45 ? v.title.slice(0, 45) + '...' : v.title,
-  }))
+export function DurationVsViews({ videos }: DurationVsViewsProps) {
+  const data = videos
+    .filter(v => v.durationSeconds > 0)
+    .map(v => ({
+      duration: Math.round((v.durationSeconds / 60) * 10) / 10,
+      views: v.viewCount,
+      title: v.title.length > 45 ? v.title.slice(0, 45) + '...' : v.title,
+      durationFormatted: formatDurationFromSeconds(v.durationSeconds),
+    }))
 
   return (
     <Card style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
@@ -44,10 +39,10 @@ export function ViewsChart({ videos, metrics }: ViewsChartProps) {
           className="text-sm font-semibold"
           style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
         >
-          Views vs content age
+          Duration vs views
         </CardTitle>
         <CardDescription style={{ color: 'var(--text-muted)' }}>
-          Dots scattered high at large X values = evergreen content. Clustered left = content that spikes then fades.
+          Where does this channel&apos;s content sweet spot lie?
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -55,13 +50,13 @@ export function ViewsChart({ videos, metrics }: ViewsChartProps) {
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis
-              dataKey="daysLive"
+              dataKey="duration"
               type="number"
-              name="Days"
+              name="Duration"
               tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
               tickLine={false}
               axisLine={false}
-              label={{ value: 'Days since published', position: 'insideBottom', offset: -5, fontSize: 11, fill: 'var(--text-muted)' }}
+              label={{ value: 'Video duration (minutes)', position: 'insideBottom', offset: -5, fontSize: 11, fill: 'var(--text-muted)' }}
             />
             <YAxis
               dataKey="views"
@@ -74,10 +69,10 @@ export function ViewsChart({ videos, metrics }: ViewsChartProps) {
               width={55}
             />
             <ReferenceLine
-              y={metrics.avgViews}
+              x={8}
               stroke="var(--border-strong)"
               strokeDasharray="4 4"
-              label={{ value: 'Channel avg', position: 'right', fontSize: 11, fill: 'var(--text-muted)' }}
+              label={{ value: '8 min', position: 'top', fontSize: 11, fill: 'var(--text-muted)' }}
             />
             <ChartTooltip
               content={({ active, payload }) => {
@@ -89,23 +84,13 @@ export function ViewsChart({ videos, metrics }: ViewsChartProps) {
                     style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
                   >
                     <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{d.title}</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>{d.durationFormatted} duration</p>
                     <p style={{ color: 'var(--text-secondary)' }}>{formatNumber(d.views)} views</p>
-                    <p style={{ color: 'var(--text-secondary)' }}>{d.daysLive} days old</p>
-                    <span
-                      className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
-                      style={{ background: tierColors[d.tier], color: '#ffffff' }}
-                    >
-                      {tierLabels[d.tier]}
-                    </span>
                   </div>
                 )
               }}
             />
-            <Scatter data={data} fill="var(--chart-1)">
-              {data.map((entry, i) => (
-                <Cell key={i} fill={tierColors[entry.tier]} r={5} />
-              ))}
-            </Scatter>
+            <Scatter data={data} fill="var(--chart-2)" r={5} />
           </ScatterChart>
         </ChartContainer>
       </CardContent>

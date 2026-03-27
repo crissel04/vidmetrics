@@ -7,8 +7,12 @@ import { ChannelHeader } from '@/components/channel/ChannelHeader'
 import { MetricCard } from '@/components/channel/MetricCard'
 import { VideoTable } from '@/components/videos/VideoTable'
 import { ViewsChart } from '@/components/charts/ViewsChart'
-import { EngagementChart } from '@/components/charts/EngagementChart'
+import { PerformanceDistribution } from '@/components/charts/PerformanceDistribution'
+import { DurationVsViews } from '@/components/charts/DurationVsViews'
+import { EngagementVsViews } from '@/components/charts/EngagementVsViews'
+import { UploadFrequencyChart } from '@/components/charts/UploadFrequencyChart'
 import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
+import { TitlePatterns } from '@/components/insights/TitlePatterns'
 import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
 import { AIInsightsPanel } from '@/components/insights/AIInsightsPanel'
 import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
@@ -226,11 +230,23 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       {/* Niche Benchmark — channel-level, unfiltered */}
       <NicheBenchmark metrics={metrics} />
 
-      {/* Charts */}
+      {/* Row 1 — scatter + distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ViewsChart videos={videos} />
-        <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
+        <ViewsChart videos={videos} metrics={metrics} />
+        <PerformanceDistribution videos={videos} />
       </div>
+
+      {/* Row 2 — duration + engagement scatters */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DurationVsViews videos={videos} />
+        <EngagementVsViews videos={videos} />
+      </div>
+
+      {/* Row 3 — upload frequency */}
+      <UploadFrequencyChart videos={videos} />
+
+      {/* Row 4 — title patterns */}
+      <TitlePatterns videos={videos} metrics={metrics} />
 
       {/* Top Takeaways */}
       <TopTakeaways videos={videos} metrics={metrics} />
