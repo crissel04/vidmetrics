@@ -10,9 +10,10 @@ interface ChannelHeaderProps {
   channel: ChannelInfo
   onShare?: () => void
   onCompare?: () => void
+  shareButton?: React.ReactNode
 }
 
-export function ChannelHeader({ channel, onShare, onCompare }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, onShare, onCompare, shareButton }: ChannelHeaderProps) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
       <div className="flex items-start justify-between gap-4">
@@ -50,7 +51,7 @@ export function ChannelHeader({ channel, onShare, onCompare }: ChannelHeaderProp
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {onShare && (
+          {shareButton ? shareButton : onShare && (
             <Button
               variant="outline"
               size="sm"

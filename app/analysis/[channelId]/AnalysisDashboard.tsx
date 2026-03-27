@@ -15,6 +15,7 @@ import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
 import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
+import { ShareButton } from '@/components/report/ShareButton'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportToCSV } from '@/lib/utils'
@@ -80,7 +81,11 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      <ChannelHeader channel={channel} />
+      <ChannelHeader
+        channel={channel}
+        onShare={() => {}}
+        shareButton={<ShareButton channel={channel} videos={videos} metrics={metrics} />}
+      />
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
