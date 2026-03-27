@@ -118,22 +118,9 @@ function ComparePageContent() {
     return () => { cancelled = true }
   }, [channelAId, channelBId, channelCId, channelCache])
 
-  if (error && !data) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p style={{ color: 'var(--red-text)' }}>{error}</p>
-      </div>
-    )
-  }
-
-  if (!data && loading) {
-    return <CompareLoadingSkeleton />
-  }
-
-  const channels = data ? [data.channelA, data.channelB] : []
-  if (data?.channelC) channels.push(data.channelC)
-
   const { filterVideos } = useTimePeriod()
+
+  const channels = data ? [data.channelA, data.channelB, ...(data.channelC ? [data.channelC] : [])] : []
 
   const filteredChannels = useMemo(() =>
     channels.map(ch => ({
@@ -153,6 +140,18 @@ function ComparePageContent() {
     handle: ch.channel.handle,
     thumbnailUrl: ch.channel.thumbnailUrl,
   }))
+
+  if (error && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <p style={{ color: 'var(--red-text)' }}>{error}</p>
+      </div>
+    )
+  }
+
+  if (!data && loading) {
+    return <CompareLoadingSkeleton />
+  }
 
   return (
     <div className="flex flex-col gap-6 fade-in">
