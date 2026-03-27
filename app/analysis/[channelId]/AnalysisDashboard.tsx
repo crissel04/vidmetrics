@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
+import type { ChannelInfo, Video, ChannelMetrics, AIInsights } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
 import { MetricCard } from '@/components/channel/MetricCard'
@@ -10,6 +10,8 @@ import { ViewsChart } from '@/components/charts/ViewsChart'
 import { EngagementChart } from '@/components/charts/EngagementChart'
 import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
 import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
+import { AIInsightsPanel } from '@/components/insights/AIInsightsPanel'
+import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -21,6 +23,8 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [data, setData] = useState<ChannelData | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [aiInsights, setAiInsights] = useState<AIInsights | null>(null)
+  const [aiLoading, setAiLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
@@ -111,6 +115,20 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
       {/* Heatmap */}
       <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
+
+      {/* AI Insights */}
+      <AIInsightsPanel
+        channel={channel}
+        videos={videos}
+        metrics={metrics}
+        onInsightsLoaded={(insights) => {
+          setAiInsights(insights)
+          setAiLoading(false)
+        }}
+      />
+
+      {/* Content Gap Detector */}
+      <ContentGapDetector insights={aiInsights} loading={aiLoading} />
 
       {/* Video Table */}
       <VideoTable videos={videos} />
