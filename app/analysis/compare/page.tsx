@@ -5,14 +5,14 @@ import { useSearchParams } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Check, Minus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Minus, TrendingUp, TrendingDown } from 'lucide-react'
 import {
   CartesianGrid, XAxis, YAxis,
   ScatterChart, Scatter, ZAxis,
   LineChart, Line,
 } from 'recharts'
 import { format } from 'date-fns'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
@@ -295,11 +295,13 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
                   >
                     {gapStr}
                   </td>
-                  <td className="text-center px-4 py-2.5">
+                  <td className="text-center px-4 py-2.5 text-xs font-medium whitespace-nowrap">
                     {allEqual ? (
-                      <Minus size={14} style={{ color: 'var(--text-muted)', display: 'inline' }} />
+                      <span style={{ color: 'var(--text-muted)' }}>Tie</span>
                     ) : maxIdx >= 0 ? (
-                      <Check size={14} style={{ color: 'var(--green-text)', display: 'inline' }} />
+                      <span style={{ color: 'var(--green-text)' }}>
+                        {channels[maxIdx].channel.handle || channels[maxIdx].channel.title.slice(0, 14)}
+                      </span>
                     ) : null}
                   </td>
                 </tr>
