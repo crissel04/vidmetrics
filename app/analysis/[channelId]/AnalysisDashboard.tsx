@@ -141,7 +141,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     <div className="flex flex-col gap-6 fade-in">
       <ChannelHeader
         channel={channel}
-        shareButton={<ShareButton channel={channel} videos={videos} metrics={metrics} />}
+        shareButton={<ShareButton channelId={channel.id} />}
       />
 
       {/* Metrics Row */}

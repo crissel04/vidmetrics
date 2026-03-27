@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { decodeReportData } from '@/lib/shareLink'
 import { formatNumber, formatDate } from '@/lib/utils'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 import { ViewsChart } from '@/components/charts/ViewsChart'
@@ -19,69 +18,89 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-interface ReportData {
+interface ChannelData {
   channel: ChannelInfo
   videos: Video[]
   metrics: ChannelMetrics
-  generatedAt: string
 }
 
 export function ReportPageContent() {
   const searchParams = useSearchParams()
-  const [reportData, setReportData] = useState<ReportData | null>(null)
+  const [data, setData] = useState<ChannelData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const raw = searchParams.get('data')
-    console.log('[Report] Raw data param:', raw ? raw.substring(0, 50) + '...' : 'NULL')
+    const channelId = searchParams.get('channelId')
 
-    if (!raw) {
-      setError('No report data found in this URL.')
+    if (!channelId) {
+      setError('No channel specified in this report link.')
+      setLoading(false)
       return
     }
 
-    try {
-      const parsed = decodeReportData<ReportData>(raw)
-      console.log('[Report] Decoded:', parsed ? 'OK' : 'NULL')
-
-      if (!parsed) throw new Error('Decompression returned null — URL may be truncated or corrupted')
-      if (!parsed.channel || !parsed.videos || !parsed.metrics) {
-        throw new Error('Report data is missing required fields')
-      }
-
-      setReportData(parsed)
-    } catch (err) {
-      console.error('[Report] Decode error:', err)
-      const message = err instanceof Error ? err.message : 'This report link is invalid or corrupted.'
-      setError(message)
-    }
+    fetch(`/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error ?? `Failed to load channel (${res.status})`)
+        }
+        return res.json()
+      })
+      .then((json) => {
+        if (!json.channel || !json.videos || !json.metrics) {
+          throw new Error('Incomplete data received from server')
+        }
+        setData({
+          channel: json.channel,
+          videos: json.videos,
+          metrics: json.metrics,
+        })
+      })
+      .catch((err) => {
+        console.error('[Report] Fetch error:', err)
+        setError(err.message ?? 'Could not load this report.')
+      })
+      .finally(() => setLoading(false))
   }, [searchParams])
+
+  if (loading) return <ReportSkeleton />
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8">
-        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Could not load report</p>
-        <p className="text-sm text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 p-8 text-center">
+        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+          Could not load report
+        </p>
+        <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
           {error}
         </p>
-        <a href="/" className="text-sm underline" style={{ color: 'var(--accent)' }}>
+        <a href="/" className="text-sm hover:underline" style={{ color: 'var(--accent)' }}>
           Go back to VidMetrics
         </a>
       </div>
     )
   }
 
-  if (!reportData) return <ReportSkeleton />
+  if (!data) return null
 
-  const { channel, videos, metrics, generatedAt } = reportData
+  const { channel, videos, metrics } = data
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 fade-in">
       {/* Report header */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-          VidMetrics Report
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+            VidMetrics Report
+          </p>
+          <span
+            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+          >
+            Live data
+          </span>
+        </div>
         <h1
           className="text-2xl font-bold mt-2"
           style={{ fontFamily: 'var(--font-display)' }}
@@ -93,9 +112,6 @@ export function ReportPageContent() {
             {channel.handle}
           </p>
         )}
-        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Generated {formatDate(generatedAt || new Date().toISOString())}
-        </p>
       </div>
 
       {/* Key metrics */}

@@ -3,31 +3,20 @@
 import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { encodeReportData } from '@/lib/shareLink'
-import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 interface ShareButtonProps {
-  channel: ChannelInfo
-  videos: Video[]
-  metrics: ChannelMetrics
+  channelId: string
 }
 
-export function ShareButton({ channel, videos, metrics }: ShareButtonProps) {
+export function ShareButton({ channelId }: ShareButtonProps) {
   const handleShare = async () => {
-    const reportData = {
-      channel,
-      videos,
-      metrics,
-      generatedAt: new Date().toISOString(),
+    if (!channelId) {
+      toast.error('No channel loaded')
+      return
     }
-    const json = JSON.stringify(reportData)
-    console.log('[ShareButton] JSON length:', json.length)
-    const encoded = encodeReportData(reportData)
-    console.log('[ShareButton] Compressed length:', encoded.length)
-    const reportUrl = `${window.location.origin}/report?data=${encoded}`
-    console.log('[ShareButton] Full URL length:', reportUrl.length)
-    console.log('[ShareButton] URL preview:', reportUrl.substring(0, 100) + '...')
-    await navigator.clipboard.writeText(reportUrl)
+
+    const url = `${window.location.origin}/report?channelId=${channelId}`
+    await navigator.clipboard.writeText(url)
     toast('Report link copied to clipboard')
   }
 
