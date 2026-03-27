@@ -17,6 +17,7 @@ import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
 import { addRecentChannel } from '@/components/channel/RecentChannels'
+import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [aiLoading, setAiLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
+  const { addTab } = useChannelTabs()
 
   useEffect(() => {
     async function fetchData() {
@@ -64,13 +66,21 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           subscriberCount: json.channel.subscriberCount,
           analyzedAt: new Date().toISOString(),
         })
+
+        // Add to tab bar
+        addTab({
+          channelId: json.channel.id,
+          title: json.channel.title,
+          handle: json.channel.handle,
+          thumbnailUrl: json.channel.thumbnailUrl,
+        })
       } catch {
         setError('Network error — please try again')
         setLoading(false)
       }
     }
     fetchData()
-  }, [channelId])
+  }, [channelId, addTab])
 
   if (error) {
     return (
