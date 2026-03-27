@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,6 +18,8 @@ import { formatNumber } from '@/lib/utils'
 import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
 import { ChannelSelector } from '@/components/compare/ChannelSelector'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
+import { TimePeriodProvider, useTimePeriod } from '@/lib/context/TimePeriodContext'
+import { TimePeriodSelector } from '@/components/ui/TimePeriodSelector'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 interface ChannelData {
@@ -42,6 +44,14 @@ interface CompareResult {
 const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
 
 export default function ComparePage() {
+  return (
+    <TimePeriodProvider>
+      <ComparePageContent />
+    </TimePeriodProvider>
+  )
+}
+
+function ComparePageContent() {
   const searchParams = useSearchParams()
   const channelAId = searchParams.get('a')
   const channelBId = searchParams.get('b')
@@ -123,6 +133,20 @@ export default function ComparePage() {
   const channels = data ? [data.channelA, data.channelB] : []
   if (data?.channelC) channels.push(data.channelC)
 
+  const { filterVideos } = useTimePeriod()
+
+  const filteredChannels = useMemo(() =>
+    channels.map(ch => ({
+      ...ch,
+      videos: filterVideos(ch.videos),
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, filterVideos]
+  )
+
+  const totalFiltered = filteredChannels.reduce((s, ch) => s + ch.videos.length, 0)
+  const totalAll = channels.reduce((s, ch) => s + ch.videos.length, 0)
+
   const selectorChannels = channels.map(ch => ({
     channelId: ch.channel.id,
     title: ch.channel.title,
@@ -144,17 +168,29 @@ export default function ComparePage() {
 
       {!loading && data && (
         <>
-          <ChannelIdentityRow channels={channels} />
-          <ScorecardTable channels={channels} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ViewsOverTimeCard channels={channels} />
-            <EngagementTrendCard channels={channels} />
-            <UploadFrequencyCard channels={channels} />
-            <PerformanceConsistencyCard channels={channels} />
+          {/* Time Period Selector */}
+          <div
+            className="flex items-center justify-between py-3"
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}
+          >
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analysis period</p>
+            <TimePeriodSelector
+              videosInPeriod={totalFiltered}
+              totalVideos={totalAll}
+            />
           </div>
-          <ContentStrategySection channels={channels} />
-          <EngagementQualitySection channels={channels} />
-          <TitlePatternSection channels={channels} />
+
+          <ChannelIdentityRow channels={channels} />
+          <ScorecardTable channels={filteredChannels} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ViewsOverTimeCard channels={filteredChannels} />
+            <EngagementTrendCard channels={filteredChannels} />
+            <UploadFrequencyCard channels={filteredChannels} />
+            <PerformanceConsistencyCard channels={filteredChannels} />
+          </div>
+          <ContentStrategySection channels={filteredChannels} />
+          <EngagementQualitySection channels={filteredChannels} />
+          <TitlePatternSection channels={filteredChannels} />
           <AIIntelligenceSection
             aiComparison={data.aiComparison}
             channels={channels}
