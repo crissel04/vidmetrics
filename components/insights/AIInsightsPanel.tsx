@@ -30,7 +30,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
   const [insights, setInsights] = useState<AIInsights | null>(null)
   const [partial, setPartial] = useState<Partial<AIInsights>>({})
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | false>(false)
 
   const fetchInsights = useCallback(async () => {
     setLoading(true)
@@ -66,7 +66,14 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       })
 
       if (!response.ok) {
-        setError(true)
+        const errBody = await response.json().catch(() => ({ error: 'Analysis unavailable' }))
+        if (response.status === 429) {
+          setError(errBody.error || 'Rate limit reached — try again in an hour')
+        } else if (response.status === 503) {
+          setError(errBody.error || 'AI service not configured')
+        } else {
+          setError(errBody.error || 'Analysis unavailable')
+        }
         setLoading(false)
         return
       }
@@ -86,7 +93,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       let accumulated = ''
 
       if (!reader) {
-        setError(true)
+        setError('No response stream available')
         setLoading(false)
         return
       }
@@ -111,11 +118,11 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       } catch (err) {
         console.error('[AIInsightsPanel] JSON parse failed:', err)
         console.error('[AIInsightsPanel] Raw text:', accumulated.slice(0, 200))
-        setError(true)
+        setError('Failed to parse AI response')
       }
       setLoading(false)
     } catch {
-      setError(true)
+      setError('Network error — please try again')
       setLoading(false)
     }
   }, [channel, videos, metrics, onInsightsLoaded])
@@ -148,7 +155,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       {error && !loading && (
         <div className="flex flex-col items-center gap-3 py-8">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Analysis unavailable
+            {error}
           </p>
           <Button variant="outline" size="sm" onClick={fetchInsights} className="gap-1.5">
             <RefreshCw size={14} />

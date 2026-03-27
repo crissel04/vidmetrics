@@ -9,6 +9,12 @@ const anthropic = new Anthropic()
 
 export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
+    // Env var check
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[insights] ANTHROPIC_API_KEY is not set')
+      return createErrorResponse('AI service not configured', 503)
+    }
+
     const body = await request.json()
     const parsed = insightsBodySchema.safeParse(body)
     if (!parsed.success) {
@@ -20,16 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { channelId, channelTitle, subscriberCount, videos, metrics } = parsed.data
-    console.log('[insights] Request for:', channelTitle, `(${channelId})`)
 
     // 1. Check Redis cache first
     try {
       const cached = await getCachedInsights(channelId)
       if (cached) {
-        console.log('[insights] Cache hit for', channelId)
         return NextResponse.json({ insights: cached })
       }
-      console.log('[insights] Cache miss for', channelId)
     } catch (cacheErr) {
       console.error('[insights] Redis cache read failed:', cacheErr)
       // Continue without cache
@@ -61,8 +64,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log('[insights] Stream complete, length:', fullText.length)
-
           // Strip markdown fences if present
           let cleanText = fullText.trim()
           if (cleanText.startsWith('```')) {
@@ -73,7 +74,6 @@ export async function POST(request: NextRequest) {
           try {
             const insights = JSON.parse(cleanText)
             await setCachedInsights(channelId, insights)
-            console.log('[insights] Cached successfully for', channelId)
           } catch (parseErr) {
             console.error('[insights] JSON parse failed after stream:', parseErr)
             console.error('[insights] Raw text:', fullText.slice(0, 200))
