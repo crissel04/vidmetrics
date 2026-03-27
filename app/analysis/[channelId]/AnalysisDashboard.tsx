@@ -16,6 +16,7 @@ import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
+import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportToCSV } from '@/lib/utils'
@@ -33,6 +34,8 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [loading, setLoading] = useState(true)
   const [aiInsights, setAiInsights] = useState<AIInsights | null>(null)
   const [aiLoading, setAiLoading] = useState(true)
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [deepDiveOpen, setDeepDiveOpen] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -151,7 +154,21 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       <ContentGapDetector insights={aiInsights} loading={aiLoading} />
 
       {/* Video Table */}
-      <VideoTable videos={videos} />
+      <VideoTable
+        videos={videos}
+        onRowClick={(video) => {
+          setSelectedVideo(video)
+          setDeepDiveOpen(true)
+        }}
+      />
+
+      {/* Video Deep Dive */}
+      <VideoDeepDive
+        video={selectedVideo}
+        metrics={metrics}
+        open={deepDiveOpen}
+        onOpenChange={setDeepDiveOpen}
+      />
 
       {/* Export CSV floating button */}
       <div className="fixed bottom-6 right-6 z-20">
