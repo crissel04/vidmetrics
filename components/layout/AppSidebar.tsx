@@ -23,7 +23,7 @@ import { useWatchlist } from '@/lib/context/WatchlistContext'
 
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
-  { title: 'Analysis', icon: BarChart2, href: '/', isActive: (p: string) => p.startsWith('/analysis') },
+  { title: 'Analysis', icon: BarChart2, href: '/analysis', isActive: (p: string) => p.startsWith('/analysis') },
 ]
 
 export function AppSidebar() {
