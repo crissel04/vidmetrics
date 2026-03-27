@@ -8,6 +8,7 @@ import { MetricCard } from '@/components/channel/MetricCard'
 import { VideoTable } from '@/components/videos/VideoTable'
 import { ViewsChart } from '@/components/charts/ViewsChart'
 import { EngagementChart } from '@/components/charts/EngagementChart'
+import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -100,6 +101,9 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         <ViewsChart videos={videos} />
         <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
       </div>
+
+      {/* Heatmap */}
+      <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
 
       {/* Video Table */}
       <VideoTable videos={videos} />
