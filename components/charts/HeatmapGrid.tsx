@@ -42,7 +42,18 @@ export function HeatmapGrid({ videos, bestDay, bestTime }: HeatmapGridProps) {
     return { grid, maxAvg }
   }, [videos])
 
-  if (videos.length < 6) return null
+  if (videos.length < 6) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
+        <h3 className="text-sm font-semibold mb-2" style={{ fontFamily: 'var(--font-display)' }}>
+          Best times to post
+        </h3>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          Not enough data to show posting patterns. At least 6 videos are needed.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">

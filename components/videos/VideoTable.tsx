@@ -230,22 +230,32 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row, i) => (
-              <TableRow
-                key={row.id}
-                onClick={() => onRowClick?.(row.original)}
-                className="cursor-pointer border-[var(--border-subtle)]"
-                style={{
-                  background: i % 2 === 0 ? 'transparent' : 'var(--border-subtle)',
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-3">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+            {table.getRowModel().rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="py-12 text-center">
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    No videos published in this period
+                  </p>
+                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              table.getRowModel().rows.map((row, i) => (
+                <TableRow
+                  key={row.id}
+                  onClick={() => onRowClick?.(row.original)}
+                  className="cursor-pointer border-[var(--border-subtle)]"
+                  style={{
+                    background: i % 2 === 0 ? 'transparent' : 'var(--border-subtle)',
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         <ScrollBar orientation="horizontal" />
