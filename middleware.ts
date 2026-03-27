@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { NextRequest, NextResponse } from 'next/server'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -22,14 +23,17 @@ const insightsRatelimit = new Ratelimit({
 })
 
 export async function middleware(request: NextRequest) {
+  // Refresh Supabase auth session on every request
+  const response = await updateSession(request)
+
   // Skip rate limiting in development
   if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next()
+    return response
   }
 
   // Skip rate limiting when Upstash credentials are missing
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return NextResponse.next()
+    return response
   }
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
@@ -60,9 +64,11 @@ export async function middleware(request: NextRequest) {
     console.error('[middleware] Rate limit check failed:', err)
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
-  matcher: ['/api/channel/:path*', '/api/insights/:path*', '/api/compare/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
