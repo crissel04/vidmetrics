@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { HeaderBreadcrumb } from "@/components/layout/HeaderBreadcrumb";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { ChannelCacheProvider } from "@/lib/context/ChannelCacheContext";
+import { RecentChannelsProvider } from "@/lib/context/RecentChannelsContext";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -60,6 +61,7 @@ export default async function RootLayout({
           <TooltipProvider delay={300}>
             <SidebarProvider defaultOpen={sidebarOpen}>
               <ChannelCacheProvider>
+              <RecentChannelsProvider>
               <AppSidebar />
               <SidebarInset>
                 <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
@@ -76,6 +78,7 @@ export default async function RootLayout({
                   {children}
                 </main>
               </SidebarInset>
+              </RecentChannelsProvider>
               </ChannelCacheProvider>
             </SidebarProvider>
           </TooltipProvider>

@@ -16,9 +16,9 @@ import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
-import { addRecentChannel } from '@/components/channel/RecentChannels'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
+import { useRecentChannels } from '@/lib/context/RecentChannelsContext'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,6 +41,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
   const { addTab } = useChannelTabs()
+  const { addRecent } = useRecentChannels()
 
   useEffect(() => {
     // If cached, use it immediately — no fetch needed
@@ -51,7 +52,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       setError('')
 
       // Still update recent channels and tabs
-      addRecentChannel({
+      addRecent({
         channelId: cached.channel.id,
         title: cached.channel.title,
         handle: cached.channel.handle,
@@ -91,7 +92,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         setLoading(false)
 
         // Save to recent channels
-        addRecentChannel({
+        addRecent({
           channelId: json.channel.id,
           title: json.channel.title,
           handle: json.channel.handle,
@@ -113,7 +114,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache])
+  }, [channelId, addTab, channelCache, addRecent])
 
   if (error) {
     return (
