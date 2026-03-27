@@ -42,10 +42,10 @@ export function ThumbnailPopover({ videoId, thumbnailUrl, title, duration, child
         {children}
       </PopoverTrigger>
       <PopoverContent
-        side="right"
-        align="start"
-        sideOffset={8}
-        className="w-[280px] p-0 shadow-none"
+        side="top"
+        align="center"
+        sideOffset={6}
+        className="w-[220px] p-0 shadow-none"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -58,7 +58,7 @@ export function ThumbnailPopover({ videoId, thumbnailUrl, title, duration, child
             alt={title}
             fill
             className="object-cover"
-            sizes="280px"
+            sizes="220px"
             onError={(e) => {
               const img = e.target as HTMLImageElement
               if (!img.src.includes('hqdefault')) {
