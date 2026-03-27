@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { House, BarChart2, FileText, Bookmark, Settings2 } from 'lucide-react'
+import { House, BarChart2, FileText, Bookmark, Settings2, Keyboard } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
 import { useReportsHistory } from '@/lib/context/ReportsHistoryContext'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
@@ -23,7 +24,6 @@ import { useWatchlist } from '@/lib/context/WatchlistContext'
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
   { title: 'Analysis', icon: BarChart2, href: '/', isActive: (p: string) => p.startsWith('/analysis') },
-  { title: 'Reports', icon: FileText, href: '/report', isActive: (p: string) => p.startsWith('/report') },
 ]
 
 export function AppSidebar() {
@@ -55,14 +55,6 @@ export function AppSidebar() {
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.title}</span>
-                        {item.title === 'Reports' && reports.length > 0 && (
-                          <span
-                            className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
-                          >
-                            {reports.length}
-                          </span>
-                        )}
                       </Link>
                     }
                   />
@@ -87,6 +79,45 @@ export function AppSidebar() {
                   }
                 />
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="my-2" style={{ background: 'var(--border-subtle)' }} />
+
+        <RecentSidebarGroup />
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith('/report')}
+                  render={
+                    <Link href="/report">
+                      <FileText size={16} />
+                      <span>Reports</span>
+                      {reports.length > 0 && (
+                        <span
+                          className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                        >
+                          {reports.length}
+                        </span>
+                      )}
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="my-2" style={{ background: 'var(--border-subtle)' }} />
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={pathname === '/settings'}
@@ -101,9 +132,27 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <RecentSidebarGroup />
       </SidebarContent>
-      <SidebarFooter className="p-4" />
+      <SidebarFooter className="p-2">
+        <button
+          onClick={() => {
+            window.dispatchEvent(
+              new KeyboardEvent('keydown', { key: '?' })
+            )
+          }}
+          className="flex items-center gap-2 px-3 py-2 w-full text-xs rounded-lg transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <Keyboard size={13} />
+          <span>Shortcuts</span>
+          <kbd
+            className="ml-auto text-[10px] rounded px-1 border"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            ?
+          </kbd>
+        </button>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

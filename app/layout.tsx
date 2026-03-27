@@ -14,6 +14,7 @@ import { RecentChannelsProvider } from "@/lib/context/RecentChannelsContext";
 import { ReportsHistoryProvider } from "@/lib/context/ReportsHistoryContext";
 import { WatchlistProvider } from "@/lib/context/WatchlistContext";
 import { SettingsProvider } from "@/lib/context/SettingsContext";
+import { GlobalKeyboardShortcuts } from "@/components/layout/GlobalKeyboardShortcuts";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -84,6 +85,7 @@ export default async function RootLayout({
                   {children}
                 </main>
               </SidebarInset>
+              <GlobalKeyboardShortcuts />
               </SettingsProvider>
               </WatchlistProvider>
               </ReportsHistoryProvider>
