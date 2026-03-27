@@ -15,6 +15,10 @@ import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
 import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { exportToCSV } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -144,6 +148,21 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
       {/* Video Table */}
       <VideoTable videos={videos} />
+
+      {/* Export CSV floating button */}
+      <div className="fixed bottom-6 right-6 z-20">
+        <Button
+          onClick={() => {
+            exportToCSV(videos, channel.title)
+            toast('CSV export started')
+          }}
+          className="gap-2"
+          style={{ background: 'var(--accent)', color: '#ffffff' }}
+        >
+          <Download size={16} />
+          Export CSV
+        </Button>
+      </div>
     </div>
   )
 }
