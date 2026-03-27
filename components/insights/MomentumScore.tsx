@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 import { MomentumSparkline } from '@/components/charts/MomentumSparkline'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { ChannelMetrics } from '@/lib/types'
 
 const labelColors: Record<string, string> = {
@@ -47,12 +48,15 @@ export function MomentumScoreWidget({ metrics, sparklineData, uploadDayCounts }:
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
       <div className="flex items-start justify-between">
         <div>
-          <p
-            className="text-xs font-medium uppercase tracking-wide"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Momentum Score
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p
+              className="text-xs font-medium uppercase tracking-wide"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Momentum Score
+            </p>
+            <InfoTooltip text="A 0\u2013100 score combining three signals: views growth vs the prior 30 days (40 pts), upload pace vs prior 30 days (30 pts), and engagement trend across the last 10 videos (30 pts). 80+ = Accelerating, 50\u201379 = Stable, 25\u201349 = Slowing, 0\u201324 = Dormant." />
+          </div>
           <div className="flex items-end gap-3 mt-2">
             <span
               className="text-4xl font-bold tabular-nums"
@@ -89,12 +93,15 @@ export function MomentumScoreWidget({ metrics, sparklineData, uploadDayCounts }:
 
       {/* Upload consistency */}
       <div className="mt-6 pt-4 border-t border-[var(--border-subtle)]">
-        <p
-          className="text-xs font-medium uppercase tracking-wide mb-2"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          Upload Consistency
-        </p>
+        <div className="flex items-center gap-1.5 mb-2">
+          <p
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Upload Consistency
+          </p>
+          <InfoTooltip text="Measured by the standard deviation of days between uploads. Very consistent = posts within ~1 day of their usual schedule. Irregular = unpredictable gaps." />
+        </div>
         <p
           className="text-sm font-medium"
           style={{ color: consistencyColors[metrics.uploadConsistency.score] }}

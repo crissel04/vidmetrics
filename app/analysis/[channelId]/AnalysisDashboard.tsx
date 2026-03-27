@@ -155,6 +155,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           label="Avg Engagement Rate"
           value={Math.round(metrics.avgEngagementRate * 100)}
           format="percent"
+          tooltip="Likes plus comments divided by views, expressed as a percentage. Higher means a more active audience. Industry average is 3\u20134%."
         />
         <MetricCard
           label="Upload Frequency"
@@ -166,6 +167,7 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           label="Views Last 30d"
           value={metrics.totalViewsLast30d}
           trend={metrics.viewsGrowthPct}
+          tooltip="Total views across all videos published or still accumulating views in the last 30 days."
         />
       </div>
 

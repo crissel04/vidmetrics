@@ -57,7 +57,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem>
-          <TooltipProvider>
+          <TooltipProvider delay={300}>
             <SidebarProvider defaultOpen={sidebarOpen}>
               <ChannelCacheProvider>
               <AppSidebar />

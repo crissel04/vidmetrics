@@ -49,9 +49,9 @@ export function NicheBenchmark({ metrics }: NicheBenchmarkProps) {
               <Info size={14} style={{ color: 'var(--text-muted)' }} className="cursor-help" />
             }
           />
-          <TooltipContent>
-            <p className="text-xs max-w-[200px]">
-              Benchmarks based on category averages across YouTube. Used for directional comparison only.
+          <TooltipContent className="max-w-[280px]">
+            <p className="text-sm">
+              Benchmarks are category averages based on typical YouTube channel performance. Used for directional comparison only — not official YouTube data.
             </p>
           </TooltipContent>
         </Tooltip>

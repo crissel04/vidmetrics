@@ -5,6 +5,8 @@ import { TrendingUp, TrendingDown } from 'lucide-react'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 import { formatNumber } from '@/lib/utils'
 
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+
 interface MetricCardProps {
   label: string
   value: number
@@ -12,9 +14,10 @@ interface MetricCardProps {
   stringValue?: string
   trend?: number
   trendLabel?: string
+  tooltip?: string
 }
 
-export function MetricCard({ label, value, format = 'number', stringValue, trend, trendLabel }: MetricCardProps) {
+export function MetricCard({ label, value, format = 'number', stringValue, trend, trendLabel, tooltip }: MetricCardProps) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -28,12 +31,15 @@ export function MetricCard({ label, value, format = 'number', stringValue, trend
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
-      <p
-        className="text-xs font-medium uppercase tracking-wide"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {label}
-      </p>
+      <div className="flex items-center gap-1.5">
+        <p
+          className="text-xs font-medium uppercase tracking-wide"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {label}
+        </p>
+        {tooltip && <InfoTooltip text={tooltip} />}
+      </div>
       <div className="flex items-end gap-3 mt-2">
         <p
           className="text-2xl font-bold tabular-nums"

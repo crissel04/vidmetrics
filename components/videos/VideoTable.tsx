@@ -32,6 +32,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { ArrowUp, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatNumber, formatDate, formatDuration } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { TrendingBadge } from '@/components/insights/TrendingBadge'
 import { ThumbnailPopover } from '@/components/videos/ThumbnailPopover'
 import type { Video } from '@/lib/types'
@@ -106,7 +107,12 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
     },
     {
       accessorKey: 'engagementRate',
-      header: 'Eng. Rate',
+      header: () => (
+        <span className="flex items-center gap-1">
+          Eng. Rate
+          <InfoTooltip text="Engagement rate: (likes + comments) \u00F7 views \u00D7 100. May be understated if the creator has hidden likes or disabled comments." />
+        </span>
+      ),
       cell: ({ row }) => {
         const rate = row.original.engagementRate
         let color = 'var(--text-primary)'
@@ -121,7 +127,12 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
     },
     {
       accessorKey: 'viewsPerDay',
-      header: 'Views/Day',
+      header: () => (
+        <span className="flex items-center gap-1">
+          Views/Day
+          <InfoTooltip text="Total views divided by days since the video was published. Normalises for video age \u2014 useful for comparing old and new videos fairly." />
+        </span>
+      ),
       cell: ({ row }) => (
         <span className="text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
           {formatNumber(Math.round(row.original.viewsPerDay))}
@@ -139,7 +150,12 @@ export function VideoTable({ videos, onRowClick }: VideoTableProps) {
     },
     {
       accessorKey: 'performanceTier',
-      header: 'Tier',
+      header: () => (
+        <span className="flex items-center gap-1">
+          Tier
+          <InfoTooltip text="Performance tier relative to this channel\u2019s own median views. Hot = 1.5\u00D7 above median. Rising = recent video above 80% of median. Underperforming = below 50% of median." />
+        </span>
+      ),
       cell: ({ row }) => <TrendingBadge tier={row.original.performanceTier} />,
     },
   ], [])
