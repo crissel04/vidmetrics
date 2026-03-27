@@ -16,6 +16,7 @@ import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { DurationInsight } from '@/components/insights/DurationInsight'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
 import { ShareButton } from '@/components/report/ShareButton'
+import { addRecentChannel } from '@/components/channel/RecentChannels'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,6 +54,16 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
         setData(json)
         setLoading(false)
+
+        // Save to recent channels
+        addRecentChannel({
+          channelId: json.channel.id,
+          title: json.channel.title,
+          handle: json.channel.handle,
+          thumbnailUrl: json.channel.thumbnailUrl,
+          subscriberCount: json.channel.subscriberCount,
+          analyzedAt: new Date().toISOString(),
+        })
       } catch {
         setError('Network error — please try again')
         setLoading(false)

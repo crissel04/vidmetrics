@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Loader2, BarChart2, Target, TrendingUp } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { RecentChannels } from '@/components/channel/RecentChannels'
 
 const chips = [
   { icon: BarChart2, label: 'Track competitors' },
@@ -141,8 +142,8 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Recent channels slot — built in Step 26 */}
-        <div id="recent-channels" />
+        {/* Recent channels */}
+        <RecentChannels />
       </div>
     </div>
   )
