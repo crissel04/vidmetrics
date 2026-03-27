@@ -137,10 +137,12 @@ export default function ComparePage() {
         <>
           <ChannelIdentityRow channels={channels} />
           <ScorecardTable channels={channels} />
-          <ViewsOverTimeCard channels={channels} />
-          <EngagementTrendCard channels={channels} />
-          <UploadFrequencyCard channels={channels} />
-          <PerformanceConsistencyCard channels={channels} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ViewsOverTimeCard channels={channels} />
+            <EngagementTrendCard channels={channels} />
+            <UploadFrequencyCard channels={channels} />
+            <PerformanceConsistencyCard channels={channels} />
+          </div>
           <ContentStrategySection channels={channels} />
           <EngagementQualitySection channels={channels} />
           <TitlePatternSection channels={channels} />
