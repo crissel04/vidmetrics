@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, RefreshCw, GitCompare, Trash2, Plus } from 'lucide-react'
+import { Bookmark, RefreshCw, GitCompare, Trash2, Plus, Tag, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,12 +15,20 @@ import AuthModal from '@/components/auth/AuthModal'
 import { formatNumber } from '@/lib/utils'
 
 export default function WatchlistPage() {
-  const { watchlist, removeFromWatchlist } = useWatchlist()
+  const { watchlist, removeFromWatchlist, addTag, removeTag, getAllTags } = useWatchlist()
   const { addTab } = useChannelTabs()
   const { user } = useAuth()
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [authOpen, setAuthOpen] = useState(false)
+  const [newTag, setNewTag] = useState('')
+  const [addingTagFor, setAddingTagFor] = useState<string | null>(null)
+  const [activeTag, setActiveTag] = useState<string | null>(null)
+
+  const allTags = getAllTags()
+  const filteredWatchlist = activeTag
+    ? watchlist.filter(entry => entry.tags.includes(activeTag))
+    : watchlist
 
   const toggleSelect = (channelId: string) => {
     setSelected(prev => {
@@ -146,9 +154,43 @@ export default function WatchlistPage() {
         </p>
       )}
 
+      {/* Tag filter bar */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setActiveTag(null)}
+            className="text-xs font-medium px-3 py-1 rounded-full border transition-colors"
+            style={{
+              borderColor: activeTag === null ? 'var(--accent)' : 'var(--border)',
+              background: activeTag === null ? 'var(--accent-subtle)' : 'transparent',
+              color: activeTag === null ? 'var(--accent-text)' : 'var(--text-secondary)',
+            }}
+          >
+            All ({watchlist.length})
+          </button>
+          {allTags.map(tag => {
+            const count = watchlist.filter(e => e.tags.includes(tag)).length
+            return (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                className="text-xs font-medium px-3 py-1 rounded-full border transition-colors"
+                style={{
+                  borderColor: activeTag === tag ? 'var(--accent)' : 'var(--border)',
+                  background: activeTag === tag ? 'var(--accent-subtle)' : 'transparent',
+                  color: activeTag === tag ? 'var(--accent-text)' : 'var(--text-secondary)',
+                }}
+              >
+                {tag} ({count})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Channel grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {watchlist.map(entry => {
+        {filteredWatchlist.map(entry => {
           const isSelected = selected.has(entry.channelId)
           const momentumColor =
             entry.lastMomentumLabel === 'Accelerating' ? 'var(--green-text)' :
@@ -229,6 +271,63 @@ export default function WatchlistPage() {
                     Analyzed {formatDistanceToNow(new Date(entry.lastAnalyzedAt), { addSuffix: true })}
                   </p>
                 )}
+
+                {/* Tags */}
+                <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  {entry.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                    >
+                      {tag}
+                      <button
+                        onClick={() => removeTag(entry.channelId, tag)}
+                        className="hover:opacity-70"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  {addingTagFor === entry.channelId ? (
+                    <input
+                      autoFocus
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTag.trim()) {
+                          addTag(entry.channelId, newTag.trim())
+                          setNewTag('')
+                          setAddingTagFor(null)
+                        }
+                        if (e.key === 'Escape') {
+                          setNewTag('')
+                          setAddingTagFor(null)
+                        }
+                      }}
+                      onBlur={() => {
+                        setNewTag('')
+                        setAddingTagFor(null)
+                      }}
+                      placeholder="Add tag…"
+                      className="text-[11px] px-2 py-0.5 rounded-full border outline-none w-20"
+                      style={{
+                        borderColor: 'var(--border)',
+                        background: 'var(--bg-app)',
+                        color: 'var(--text-primary)',
+                      }}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setAddingTagFor(entry.channelId)}
+                      className="inline-flex items-center gap-0.5 text-[11px] px-2 py-0.5 rounded-full border border-dashed transition-colors"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                    >
+                      <Tag size={10} />
+                      Add
+                    </button>
+                  )}
+                </div>
 
                 {/* Action buttons */}
                 <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
