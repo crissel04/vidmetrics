@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart2, FileText } from 'lucide-react'
+import { House, BarChart2, FileText } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -20,8 +20,9 @@ import { ThemeToggle } from './ThemeToggle'
 import { RecentSidebarGroup } from './RecentSidebarGroup'
 
 const navItems = [
-  { title: 'Analysis', icon: BarChart2, href: '/' },
-  { title: 'Reports', icon: FileText, href: '/report' },
+  { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
+  { title: 'Analysis', icon: BarChart2, href: '/', isActive: (p: string) => p.startsWith('/analysis') },
+  { title: 'Reports', icon: FileText, href: '/report', isActive: (p: string) => p.startsWith('/report') },
 ]
 
 export function AppSidebar() {
@@ -46,11 +47,7 @@ export function AppSidebar() {
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    isActive={
-                      item.href === '/'
-                        ? pathname === '/' || pathname.startsWith('/analysis')
-                        : pathname.startsWith(item.href)
-                    }
+                    isActive={item.isActive(pathname)}
                     render={
                       <Link href={item.href}>
                         <item.icon />
