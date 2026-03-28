@@ -78,7 +78,7 @@ export function ChannelTabBar() {
 
   return (
     <div
-      className="flex items-center gap-0.5 overflow-x-auto px-1"
+      className="flex h-full min-h-0 w-full min-w-0 items-stretch gap-0 overflow-x-auto p-0 m-0"
       style={{ scrollbarWidth: 'none' }}
     >
       <DndContext
@@ -89,19 +89,23 @@ export function ChannelTabBar() {
         onDragCancel={() => setActiveId(null)}
         modifiers={[restrictToHorizontalAxis]}
       >
-        <SortableContext
-          items={tabs.map(t => t.channelId)}
-          strategy={horizontalListSortingStrategy}
-        >
-          {tabs.map((tab) => (
-            <SortableChannelTab
-              key={tab.channelId}
-              tab={tab}
-              isActive={pathname === `/analysis/${tab.channelId}`}
-              onRemove={handleRemove}
-            />
-          ))}
-        </SortableContext>
+        {/* Flex wrapper so tab sortables are direct flex children with h-full (providers are not a DOM node). */}
+        <div className="flex h-full min-h-0 min-w-0 items-stretch">
+          <SortableContext
+            items={tabs.map(t => t.channelId)}
+            strategy={horizontalListSortingStrategy}
+          >
+            {tabs.map((tab, index) => (
+              <SortableChannelTab
+                key={tab.channelId}
+                tab={tab}
+                isFirst={index === 0}
+                isActive={pathname === `/analysis/${tab.channelId}`}
+                onRemove={handleRemove}
+              />
+            ))}
+          </SortableContext>
+        </div>
         <DragOverlay dropAnimation={null}>
           {activeTab ? (
             <TabContent
@@ -117,15 +121,15 @@ export function ChannelTabBar() {
       {tabs.length >= 2 && (
         <Link
           href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}${tabs[2] ? `&c=${tabs[2].channelId}` : ''}`}
-          className="flex shrink-0 items-center gap-1.5 rounded-t-md px-2 py-2 text-xs font-medium transition-all duration-150"
+          className="-ml-px flex h-full min-h-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5 text-xs font-medium transition-all duration-150"
           style={pathname === '/analysis/compare' ? {
             background: 'var(--accent)',
             color: '#ffffff',
-            borderBottom: '2px solid var(--accent)',
+            borderColor: 'var(--border)',
           } : {
             background: 'var(--accent-subtle)',
             color: 'var(--accent-text)',
-            border: '1px solid color-mix(in srgb, var(--accent) 40%, transparent)',
+            borderColor: 'var(--border)',
           }}
           onMouseEnter={(e) => {
             if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '0.8'
@@ -141,6 +145,7 @@ export function ChannelTabBar() {
 
       {/* Add channel button */}
       <AddChannelPopover
+        isFirst={tabs.length === 0}
         onAdd={(tab) => {
           addTab(tab)
           router.push(`/analysis/${tab.channelId}`)
@@ -154,23 +159,27 @@ export function ChannelTabBar() {
 function TabContent({
   tab,
   isActive,
+  isFirst,
   onRemove,
   isDragOverlay,
   listeners,
 }: {
   tab: ChannelTab
   isActive: boolean
+  /** Flush left edge of the tab bar (no horizontal inset) */
+  isFirst?: boolean
   onRemove?: (channelId: string) => void
   isDragOverlay?: boolean
   listeners?: Record<string, unknown>
 }) {
   return (
     <div
-      className="group relative flex items-center gap-1.5 rounded-t-md px-2.5 py-2 text-xs font-medium"
+      className={`group relative box-border flex h-full min-h-0 min-w-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5 text-xs font-medium ${isFirst ? 'border-l-0' : ''}`}
       style={{
         background: isActive ? 'var(--bg-app)' : isDragOverlay ? 'var(--bg-card)' : 'transparent',
         color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-        borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+        borderColor: 'var(--border)',
+        boxShadow: isActive ? 'inset 0 -2px 0 0 var(--accent)' : undefined,
         cursor: isDragOverlay ? 'grabbing' : 'grab',
       }}
       onMouseEnter={(e) => {
@@ -242,10 +251,12 @@ function TabContent({
 
 function SortableChannelTab({
   tab,
+  isFirst,
   isActive,
   onRemove,
 }: {
   tab: ChannelTab
+  isFirst: boolean
   isActive: boolean
   onRemove: (channelId: string) => void
 }) {
@@ -268,15 +279,20 @@ function SortableChannelTab({
     opacity: isDragging ? 0.5 : 1,
     ...(isDragging ? {
       background: 'var(--accent-subtle)',
-      borderRadius: '6px',
       border: '1px dashed color-mix(in srgb, var(--accent) 40%, transparent)',
     } : {}),
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="shrink-0">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`flex h-full min-h-0 shrink-0 ${isFirst ? 'ml-0' : '-ml-px'}`}
+    >
       <TabContent
         tab={tab}
+        isFirst={isFirst}
         isActive={isActive}
         onRemove={onRemove}
         listeners={listeners}
@@ -286,8 +302,10 @@ function SortableChannelTab({
 }
 
 function AddChannelPopover({
+  isFirst,
   onAdd,
 }: {
+  isFirst: boolean
   onAdd: (tab: { channelId: string; title: string; handle: string; thumbnailUrl: string }) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -349,8 +367,8 @@ function AddChannelPopover({
         render={
           <button
             type="button"
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors duration-150"
-            style={{ color: 'var(--text-muted)' }}
+            className={`flex h-full min-h-0 w-9 shrink-0 cursor-pointer items-center justify-center border-x border-solid border-y-0 p-0 transition-colors duration-150 ${isFirst ? 'ml-0 border-l-0' : '-ml-px'}`}
+            style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-app)' }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           />

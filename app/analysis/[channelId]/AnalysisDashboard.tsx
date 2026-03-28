@@ -302,23 +302,23 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         </CardHeader>
 
         <Tabs defaultValue="table" className="w-full">
-          <div className="px-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-            <TabsList className="h-9 bg-transparent p-0 gap-0">
+          <div className="border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+            <TabsList className="h-10 w-full justify-start bg-transparent p-0 gap-0 rounded-none">
               <TabsTrigger
                 value="table"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
               >
                 All videos
               </TabsTrigger>
               <TabsTrigger
                 value="top"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
               >
                 Top performers
               </TabsTrigger>
               <TabsTrigger
                 value="weak"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-4 h-9 text-sm"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
               >
                 Underperforming
               </TabsTrigger>
