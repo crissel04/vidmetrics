@@ -2,102 +2,61 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { BarChart2 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
-import { useRecentChannels } from '@/lib/context/RecentChannelsContext'
-import { formatNumber } from '@/lib/utils'
+import { RecentChannels } from '@/components/channel/RecentChannels'
+import { HeroBackground } from '@/components/layout/HeroBackground'
+import { VidMetricsLogo } from '@/components/layout/VidMetricsLogo'
 
 export default function AnalysisIndexPage() {
   const { tabs } = useChannelTabs()
-  const { recents } = useRecentChannels()
   const router = useRouter()
 
-  // If there are open tabs, redirect to the first one automatically
   useEffect(() => {
     if (tabs.length > 0) {
       router.replace(`/analysis/${tabs[0].channelId}`)
     }
   }, [tabs, router])
 
-  // If redirecting, show nothing (avoids flash)
   if (tabs.length > 0) return null
 
-  // No open tabs — show a helpful empty state
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-6 py-8 text-center fade-in">
-      <div
-        className="w-12 h-12 rounded-full flex items-center justify-center"
-        style={{ background: 'var(--bg-app)' }}
-      >
-        <BarChart2 size={24} style={{ color: 'var(--text-muted)' }} />
-      </div>
-      <div className="space-y-1">
-        <p
-          className="font-semibold"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-        >
-          No channel open
-        </p>
-        <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
-          Paste a YouTube channel URL to start analyzing, or pick a channel you've analyzed before.
-        </p>
-      </div>
-      <Button
-        onClick={() => router.push('/')}
-        style={{ background: 'var(--accent)', color: '#ffffff' }}
-      >
-        Analyze a channel
-      </Button>
+    <div className="-mt-14 flex w-full flex-1 flex-col items-center justify-center">
+      <HeroBackground />
 
-      {/* Show recent channels as quick picks if available */}
-      {recents.length > 0 && (
-        <div className="w-full max-w-sm space-y-2">
-          <p
-            className="text-xs uppercase tracking-wider"
-            style={{ color: 'var(--text-muted)' }}
+      <div className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 pt-12 text-center">
+        <div className="flex w-full flex-col items-center gap-3">
+          <VidMetricsLogo className="size-10" />
+
+          <h1
+            className="w-full max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
           >
-            Recent
+            No channel open
+          </h1>
+
+          <p className="max-w-lg text-base sm:text-lg" style={{ color: 'var(--text-secondary)' }}>
+            Paste a YouTube channel URL to start analyzing, or pick a channel you&apos;ve analyzed before.
           </p>
-          <div className="space-y-1">
-            {recents.slice(0, 3).map(channel => (
-              <button
-                key={channel.channelId}
-                onClick={() => router.push(`/analysis/${channel.channelId}`)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-left"
-                style={{ background: 'transparent' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--bg-app)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
-              >
-                <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarImage src={channel.thumbnailUrl} alt={channel.title} />
-                  <AvatarFallback
-                    style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
-                  >
-                    {channel.title.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p
-                    className="text-sm font-medium truncate"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    {channel.title}
-                  </p>
-                  <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                    {channel.handle} · {formatNumber(channel.subscriberCount)} subscribers
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
         </div>
-      )}
+
+        <div className="mt-9 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
+          <Button
+            onClick={() => router.push('/')}
+            className="h-11 shrink-0 cursor-pointer gap-1.5 border border-white/20 px-4 text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+            style={{
+              background: 'var(--accent)',
+              color: '#ffffff',
+            }}
+          >
+            Analyze a channel
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          </Button>
+        </div>
+
+        <RecentChannels />
+      </div>
     </div>
   )
 }

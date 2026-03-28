@@ -7,14 +7,8 @@ import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { RecentChannels } from '@/components/channel/RecentChannels'
+import { HeroBackground } from '@/components/layout/HeroBackground'
 import { VidMetricsLogo } from '@/components/layout/VidMetricsLogo'
-
-/**
- * Shared ellipse for the glow and grid mask.
- * Because the layers use position:fixed (viewport-relative), percentages here
- * are already relative to the full viewport width — no offset math needed.
- */
-const heroRadialShape = 'ellipse 70% 55% at 50% 0%'
 
 export default function HomePage() {
   const [url, setUrl] = useState('')
@@ -69,33 +63,7 @@ export default function HomePage() {
 
   return (
     <div className="-mt-14 flex w-full flex-1 flex-col items-center justify-center">
-      {/*
-        position:fixed → viewport-relative, always spans 100vw × 100vh.
-        z-index:0 → paints above the SidebarInset bg-background (normal flow)
-                    but below the sidebar (z-10), header (z-10), and hero content (z-10).
-        These divs unmount when navigating away from the home page.
-      */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          zIndex: 0,
-          background: `radial-gradient(${heroRadialShape}, color-mix(in srgb, var(--primary) var(--hero-radial-primary-inner), var(--bg-app)) 0%, color-mix(in srgb, var(--primary) var(--hero-radial-primary-mid), var(--bg-app)) 40%, var(--bg-app) 75%)`,
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          zIndex: 0,
-          opacity: 'var(--hero-grid-opacity)',
-          backgroundImage: `linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-          backgroundPosition: '0 -32px',
-          maskImage: `radial-gradient(${heroRadialShape}, #000 0%, rgb(0 0 0 / 0.5) 40%, transparent 76%)`,
-          WebkitMaskImage: `radial-gradient(${heroRadialShape}, #000 0%, rgb(0 0 0 / 0.5) 40%, transparent 76%)`,
-        }}
-      />
+      <HeroBackground />
 
       <div className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 pt-12 text-center">
         <div className="flex w-full flex-col items-center gap-4">
