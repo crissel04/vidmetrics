@@ -22,7 +22,7 @@ export function RecentSidebarGroup() {
     <SidebarGroup>
       <SidebarGroupLabel>Recent</SidebarGroupLabel>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
           {recents.length === 0 ? (
             <SidebarMenuItem>
               <span
@@ -34,7 +34,7 @@ export function RecentSidebarGroup() {
             </SidebarMenuItem>
           ) : (
             recents.map((ch) => (
-              <SidebarMenuItem key={ch.channelId} className="group">
+              <SidebarMenuItem key={ch.channelId} className="group/recent-row">
                 <SidebarMenuButton
                   render={
                     <Link
@@ -62,12 +62,13 @@ export function RecentSidebarGroup() {
                       </Avatar>
                       <span className="truncate max-w-[16ch]">{ch.title}</span>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                           removeRecent(ch.channelId)
                         }}
-                        className="shrink-0 ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                        className="shrink-0 ml-auto cursor-pointer p-0.5 rounded opacity-0 transition-opacity duration-150 group-hover/recent-row:opacity-100"
                         style={{ color: 'var(--text-muted)' }}
                       >
                         <X size={12} />

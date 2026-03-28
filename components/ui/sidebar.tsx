@@ -277,19 +277,33 @@ function SidebarTrigger({
   )
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-  const { toggleSidebar } = useSidebar()
+const RAIL_DRAG_SNAP_PX = 56
+const RAIL_CLICK_MAX_PX = 8
+
+function SidebarRail({
+  className,
+  side = "left",
+  onPointerDown,
+  onPointerUp,
+  onPointerCancel,
+  ...props
+}: React.ComponentProps<"button"> & {
+  side?: "left" | "right"
+}) {
+  const { open, setOpen, toggleSidebar } = useSidebar()
+  const dragStartX = React.useRef<number | null>(null)
 
   return (
     <button
+      {...props}
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
       title="Toggle Sidebar"
+      type="button"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
+        "absolute inset-y-0 z-20 hidden w-4 touch-none transition-all ease-linear select-none group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full hover:group-data-[collapsible=offcanvas]:bg-sidebar",
@@ -297,7 +311,45 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
         className
       )}
-      {...props}
+      onPointerDown={(e) => {
+        onPointerDown?.(e)
+        if (e.defaultPrevented) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        dragStartX.current = e.clientX
+      }}
+      onPointerUp={(e) => {
+        onPointerUp?.(e)
+        if (e.defaultPrevented) return
+        const start = dragStartX.current
+        dragStartX.current = null
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          // already released
+        }
+        if (start === null) return
+
+        const dx = e.clientX - start
+        const adx = Math.abs(dx)
+
+        if (adx < RAIL_CLICK_MAX_PX) {
+          toggleSidebar()
+          return
+        }
+        if (adx < RAIL_DRAG_SNAP_PX) return
+
+        if (side === "left") {
+          if (open && dx <= -RAIL_DRAG_SNAP_PX) setOpen(false)
+          else if (!open && dx >= RAIL_DRAG_SNAP_PX) setOpen(true)
+        } else {
+          if (open && dx >= RAIL_DRAG_SNAP_PX) setOpen(false)
+          else if (!open && dx <= -RAIL_DRAG_SNAP_PX) setOpen(true)
+        }
+      }}
+      onPointerCancel={(e) => {
+        onPointerCancel?.(e)
+        dragStartX.current = null
+      }}
     />
   )
 }

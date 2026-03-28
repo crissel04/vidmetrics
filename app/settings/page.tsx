@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Trash2, RotateCcw } from 'lucide-react'
+import { Trash2, RotateCcw, Keyboard } from 'lucide-react'
 
 export default function SettingsPage() {
   const { settings, updateSetting, resetSettings, clearAllData } = useSettings()
@@ -122,6 +122,44 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Keyboard shortcuts */}
+      <Card style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
+        <CardHeader className="pb-3">
+          <CardTitle
+            className="text-base font-semibold"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
+            Keyboard shortcuts
+          </CardTitle>
+          <CardDescription style={{ color: 'var(--text-muted)' }}>
+            Open the full reference of navigation and analysis shortcuts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2 w-full sm:w-auto justify-start"
+            style={{ borderColor: 'var(--border)' }}
+            onClick={() => {
+              window.dispatchEvent(
+                new KeyboardEvent('keydown', { key: '?' })
+              )
+            }}
+          >
+            <Keyboard size={15} />
+            <span>Show shortcuts</span>
+            <kbd
+              className="ml-auto sm:ml-2 text-[10px] rounded px-1.5 py-0.5 border font-mono"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+            >
+              ?
+            </kbd>
+          </Button>
         </CardContent>
       </Card>
 
