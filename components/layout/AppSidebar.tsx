@@ -59,10 +59,15 @@ export function AppSidebar() {
           <div
             className={cn(
               'min-w-0 shrink overflow-hidden transition-[max-width,opacity] duration-200 ease-linear',
-              collapsed ? 'max-w-0 opacity-0' : 'max-w-[min(100%,12rem)] opacity-100'
+              collapsed ? 'max-w-0 opacity-0' : 'max-w-[min(100%,14rem)] opacity-100'
             )}
           >
-            <VidMetricsLogo className="block" />
+            <div className="flex min-w-0 items-center gap-2">
+              <VidMetricsLogo className="block shrink-0" />
+              <span className="truncate whitespace-nowrap font-[var(--font-body)] text-base font-medium text-sidebar-foreground">
+                VidMetrics
+              </span>
+            </div>
           </div>
           <SidebarTrigger
             size={collapsed ? 'icon' : 'icon-sm'}
