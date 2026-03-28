@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Share2, Bookmark } from 'lucide-react'
+import { Share2, Bookmark, ExternalLink } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import { CopyHandleButton } from '@/components/ui/CopyHandleButton'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
@@ -59,6 +59,21 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={`https://www.youtube.com/channel/${channel.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <ExternalLink size={14} />
+              YouTube
+            </Button>
+          </a>
           <Button
             variant="outline"
             size="sm"

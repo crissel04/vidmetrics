@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { X, Plus, GitCompare, Loader2, ExternalLink, ArrowUp } from 'lucide-react'
+import { X, Plus, GitCompare, Loader2, ArrowUp } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useChannelTabs, type ChannelTab } from '@/lib/hooks/useChannelTabs'
@@ -212,38 +211,18 @@ function TabContent({
         </span>
       </Link>
       {!isDragOverlay && (
-        <>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <a
-                  href={`https://www.youtube.com/channel/${tab.channelId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-                  style={{ color: 'var(--text-muted)' }}
-                />
-              }
-            >
-              <ExternalLink size={11} />
-            </TooltipTrigger>
-            <TooltipContent>View on YouTube</TooltipContent>
-          </Tooltip>
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onRemove?.(tab.channelId)
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <X size={12} />
-          </button>
-        </>
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onRemove?.(tab.channelId)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <X size={12} />
+        </button>
       )}
     </div>
   )
