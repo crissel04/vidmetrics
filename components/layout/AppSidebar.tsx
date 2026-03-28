@@ -62,12 +62,16 @@ export function AppSidebar() {
               collapsed ? 'max-w-0 opacity-0' : 'max-w-[min(100%,14rem)] opacity-100'
             )}
           >
-            <div className="flex min-w-0 items-center gap-2">
+            <Link
+              href="/"
+              className="flex min-w-0 items-center gap-2 cursor-pointer rounded-md outline-none ring-sidebar-ring transition-opacity hover:opacity-90 focus-visible:ring-2"
+              aria-label="VidMetrics home"
+            >
               <VidMetricsLogo className="block shrink-0" />
               <span className="truncate whitespace-nowrap font-[var(--font-body)] text-base font-medium text-sidebar-foreground">
                 VidMetrics
               </span>
-            </div>
+            </Link>
           </div>
           <SidebarTrigger
             size={collapsed ? 'icon' : 'icon-sm'}
