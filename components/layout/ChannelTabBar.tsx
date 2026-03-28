@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { X, Plus, GitCompare, Loader2, ExternalLink } from 'lucide-react'
+import { X, Plus, GitCompare, Loader2, ExternalLink, ArrowUp } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -117,7 +117,7 @@ export function ChannelTabBar() {
       {tabs.length >= 2 && (
         <Link
           href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}${tabs[2] ? `&c=${tabs[2].channelId}` : ''}`}
-          className="flex items-center gap-1.5 shrink-0 px-1.5 py-1.5 rounded-t-md text-xs font-medium transition-all duration-150"
+          className="flex shrink-0 items-center gap-1.5 rounded-t-md px-2 py-2 text-xs font-medium transition-all duration-150"
           style={pathname === '/analysis/compare' ? {
             background: 'var(--accent)',
             color: '#ffffff',
@@ -134,7 +134,7 @@ export function ChannelTabBar() {
             if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '1'
           }}
         >
-          <GitCompare size={14} />
+          <GitCompare size={15} />
           Compare
         </Link>
       )}
@@ -166,7 +166,7 @@ function TabContent({
 }) {
   return (
     <div
-      className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-t-md text-xs font-medium relative"
+      className="group relative flex items-center gap-1.5 rounded-t-md px-2.5 py-2 text-xs font-medium"
       style={{
         background: isActive ? 'var(--bg-app)' : isDragOverlay ? 'var(--bg-card)' : 'transparent',
         color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
@@ -348,35 +348,43 @@ function AddChannelPopover({
       <PopoverTrigger
         render={
           <button
-            className="shrink-0 flex items-center justify-center h-7 w-7 rounded-md transition-colors duration-150"
+            type="button"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors duration-150"
             style={{ color: 'var(--text-muted)' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-app)' }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           />
         }
       >
-        <Plus size={14} />
+        <Plus size={15} />
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={8} className="w-72 shadow-none">
-        <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+      <PopoverContent align="start" side="bottom" sideOffset={18} className="w-80 p-2.5 shadow-none">
+        <p className="mb-1.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
           Add channel
         </p>
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           <Input
             placeholder="youtube.com/@channel"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError('') }}
             onKeyDown={(e) => e.key === 'Enter' && !loading && handleSubmit()}
-            className="h-7 text-xs"
+            className="h-9 rounded-md px-3 text-xs"
             style={{ borderColor: error ? 'var(--red)' : 'var(--border)' }}
           />
           <Button
             onClick={handleSubmit}
             disabled={loading || !url.trim()}
-            className="h-7 px-2.5 text-xs shrink-0"
+            className="h-9 shrink-0 gap-1.5 rounded-md px-3.5 text-xs"
             style={{ background: 'var(--accent)', color: '#ffffff' }}
           >
-            {loading ? <Loader2 size={12} className="animate-spin" /> : 'Add'}
+            {loading ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <>
+                Add
+                <ArrowUp size={14} className="shrink-0" aria-hidden />
+              </>
+            )}
           </Button>
         </div>
         {error && (
