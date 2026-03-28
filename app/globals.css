@@ -130,6 +130,11 @@
   --sidebar-accent-foreground: var(--sidebar-active-text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--accent);
+
+  /* Home hero wash + grid (light: a touch brighter) */
+  --hero-radial-primary-inner: 34%;
+  --hero-radial-primary-mid: 16%;
+  --hero-grid-opacity: 0.1;
 }
 
 /* ─── Design System: Dark Theme ─── */
@@ -155,6 +160,10 @@
   --sidebar-active-bg: #6366f115;
   --sidebar-active-text: #818cf8;
   --sidebar-active-border: #6366f1;
+
+  --hero-radial-primary-inner: 28%;
+  --hero-radial-primary-mid: 12%;
+  --hero-grid-opacity: 0.075;
 }
 
 /* ─── Keyframes ─── */

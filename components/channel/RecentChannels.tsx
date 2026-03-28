@@ -33,7 +33,7 @@ export function RecentChannels() {
           >
             <Link
               href={`/analysis/${ch.channelId}`}
-              className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--bg-card)] p-2 text-center transition-[background-color,border-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] hover:bg-[var(--border-subtle)]"
+              className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2 text-center transition-[background-color,border-color] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] hover:bg-[var(--border-subtle)]"
               onClick={() => {
                 addTab({
                   channelId: ch.channelId,
