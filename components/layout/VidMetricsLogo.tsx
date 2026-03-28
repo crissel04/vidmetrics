@@ -8,7 +8,7 @@ type VidMetricsLogoProps = {
 export function VidMetricsLogo({ className }: VidMetricsLogoProps) {
   return (
     <svg
-      className={cn('size-9 shrink-0 text-primary', className)}
+      className={cn('size-8 shrink-0 text-primary', className)}
       viewBox="0 0 40 40"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

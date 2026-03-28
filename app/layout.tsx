@@ -76,7 +76,7 @@ export default async function RootLayout({
                           <SavedComparisonsProvider>
                             <AppSidebar />
                             <SidebarInset>
-                              <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg-card)] px-4">
+                              <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-[var(--border)] bg-sidebar px-4">
                                 <SidebarTrigger className="-ml-1 shrink-0 cursor-pointer md:hidden" />
                                 <Separator orientation="vertical" className="h-4 md:hidden" />
                                 <div className="flex-1 min-w-0">
