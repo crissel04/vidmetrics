@@ -31,10 +31,6 @@ import { exportToCSV } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
 import { useSettings } from '@/lib/context/SettingsContext'
-import { useAuth } from '@/lib/context/AuthContext'
-import { saveSnapshot, getPreviousSnapshot, type ChannelSnapshot } from '@/lib/snapshots'
-import ChannelHistoryChart from '@/components/insights/ChannelHistoryChart'
-import AnalysisDiff from '@/components/insights/AnalysisDiff'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -51,12 +47,10 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [aiLoading, setAiLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
-  const [previousSnapshot, setPreviousSnapshot] = useState<ChannelSnapshot | null>(null)
   const { addTab } = useChannelTabs()
   const { addRecent } = useRecentChannels()
   const { updateLastAnalyzed } = useWatchlist()
   const { settings } = useSettings()
-  const { user } = useAuth()
 
   useEffect(() => {
     // If cached, use it immediately — no fetch needed
@@ -86,10 +80,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         cached.metrics.momentumScore,
         cached.metrics.momentumLabel
       )
-      if (user) {
-        getPreviousSnapshot(user.id, channelId).then(setPreviousSnapshot)
-        saveSnapshot(user.id, cached.channel, cached.metrics)
-      }
       return
     }
 
@@ -140,19 +130,13 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           json.metrics.momentumLabel
         )
 
-        // Save snapshot and fetch previous for signed-in users
-        if (user) {
-          const prev = await getPreviousSnapshot(user.id, channelId)
-          setPreviousSnapshot(prev)
-          await saveSnapshot(user.id, json.channel, json.metrics)
-        }
       } catch {
         setError('Network error — please try again')
         setLoading(false)
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch, user])
+  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch])
 
   const videos = data?.videos ?? []
   const metrics = data?.metrics ?? null
@@ -180,13 +164,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex flex-col gap-6 fade-in">
-      {user && previousSnapshot && data && (
-        <AnalysisDiff
-          current={{ channel: data.channel, metrics: data.metrics }}
-          previous={previousSnapshot}
-        />
-      )}
-
       <ChannelHeader
         channel={channel}
         shareButton={<ShareButton channelId={channel.id} />}
@@ -219,9 +196,6 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           tooltip="Total views across all videos published or still accumulating views in the last 30 days."
         />
       </div>
-
-      {/* Channel History — shows trends across analyses (signed-in only) */}
-      <ChannelHistoryChart channelId={channelId} />
 
       {/* Momentum Score — channel-level, unfiltered */}
       <MomentumScoreWidget
@@ -403,7 +377,7 @@ function DashboardLoadingSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       {/* Channel Header */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+      <div>
         <div className="flex items-center gap-4">
           <Skeleton className="h-16 w-16 rounded-full" />
           <div className="flex-1 space-y-2">
