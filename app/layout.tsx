@@ -87,7 +87,7 @@ export default async function RootLayout({
                                   <UserButton />
                                 </div>
                               </header>
-                              <main className="flex flex-1 flex-col gap-6 p-6">
+                              <main className="flex min-h-0 flex-1 flex-col gap-6 py-6 px-0">
                                 {children}
                               </main>
                             </SidebarInset>

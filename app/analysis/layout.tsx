@@ -8,7 +8,7 @@ export default function AnalysisLayout({
   return (
     <>
       <div
-        className="-mx-6 -mt-6 mb-0 border-b"
+        className="-mt-6 mb-0 border-b px-6"
         style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
       >
         <ChannelTabBar />

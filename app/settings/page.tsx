@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   return (
-    <div className="space-y-6 max-w-[640px] mx-auto w-full fade-in">
+    <div className="mx-auto w-full max-w-[640px] space-y-6 px-6 fade-in">
 
       {/* Page header */}
       <div>

@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, Loader2, BarChart2, Target, TrendingUp } from 'lucide-react'
+import { Search, Loader2, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { RecentChannels } from '@/components/channel/RecentChannels'
+import { VidMetricsLogo } from '@/components/layout/VidMetricsLogo'
 
-const chips = [
-  { icon: BarChart2, label: 'Track competitors' },
-  { icon: Target, label: 'Find content gaps' },
-  { icon: TrendingUp, label: 'Benchmark performance' },
-]
+/**
+ * Shared ellipse for the glow and grid mask.
+ * Because the layers use position:fixed (viewport-relative), percentages here
+ * are already relative to the full viewport width — no offset math needed.
+ */
+const heroRadialShape = 'ellipse 70% 55% at 50% 0%'
 
 export default function HomePage() {
   const [url, setUrl] = useState('')
@@ -34,7 +36,6 @@ export default function HomePage() {
       return
     }
 
-    // Basic URL validation
     let parsedUrl: URL
     try {
       parsedUrl = new URL(url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`)
@@ -67,32 +68,53 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 -mt-14 relative overflow-hidden">
-      {/* CSS-only subtle grid background */}
+    <div className="-mt-14 flex w-full flex-1 flex-col items-center justify-center">
+      {/*
+        position:fixed → viewport-relative, always spans 100vw × 100vh.
+        z-index:0 → paints above the SidebarInset bg-background (normal flow)
+                    but below the sidebar (z-10), header (z-10), and hero content (z-10).
+        These divs unmount when navigating away from the home page.
+      */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
         style={{
-          backgroundImage: `linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)`,
+          zIndex: 0,
+          background: `radial-gradient(${heroRadialShape}, color-mix(in srgb, var(--primary) 28%, var(--bg-app)) 0%, color-mix(in srgb, var(--primary) 12%, var(--bg-app)) 40%, var(--bg-app) 75%)`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.075]"
+        style={{
+          zIndex: 0,
+          backgroundImage: `linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)`,
           backgroundSize: '60px 60px',
+          maskImage: `radial-gradient(${heroRadialShape}, #000 0%, rgb(0 0 0 / 0.5) 40%, transparent 76%)`,
+          WebkitMaskImage: `radial-gradient(${heroRadialShape}, #000 0%, rgb(0 0 0 / 0.5) 40%, transparent 76%)`,
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center max-w-2xl w-full text-center gap-6">
-        <h1
-          className="text-4xl sm:text-5xl font-bold tracking-tight"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-        >
-          Know what your competitors are doing on YouTube
-        </h1>
+      <div className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 pt-12 text-center">
+        <div className="flex w-full flex-col items-center gap-4">
+          <VidMetricsLogo className="size-11" />
 
-        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-          Paste any channel URL. Get instant performance intelligence.
-        </p>
+          <h1
+            className="w-full text-4xl font-semibold tracking-tight sm:text-5xl max-w-2xl"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
+            Know what your competitors are doing on YouTube
+          </h1>
 
-        <div className="flex flex-col sm:flex-row w-full gap-3 max-w-xl">
+          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+            Paste any channel URL. Get instant performance intelligence.
+          </p>
+        </div>
+
+        <div className="mt-9 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-stretch">
           <div className="relative flex-1">
             <Search
-              size={18}
+              size={17}
               className="absolute left-3 top-1/2 -translate-y-1/2"
               style={{ color: 'var(--text-muted)' }}
             />
@@ -104,7 +126,7 @@ export default function HomePage() {
                 setError('')
               }}
               onKeyDown={(e) => e.key === 'Enter' && !loading && handleAnalyze()}
-              className="pl-10 h-12 text-base"
+              className="h-11 pl-10 text-base"
               style={{
                 background: 'var(--bg-card)',
                 borderColor: error ? 'var(--red)' : 'var(--border)',
@@ -114,43 +136,29 @@ export default function HomePage() {
           <Button
             onClick={handleAnalyze}
             disabled={loading}
-            className="h-12 px-6 text-base font-medium"
+            className="h-11 shrink-0 cursor-pointer gap-1.5 border border-white/20 px-4 text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
             style={{
               background: 'var(--accent)',
               color: '#ffffff',
             }}
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              'Analyze Channel'
+              <>
+                Analyze Channel
+                <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              </>
             )}
           </Button>
         </div>
 
         {error && (
-          <p className="text-sm" style={{ color: 'var(--red-text)' }}>
+          <p className="mt-3 text-sm" style={{ color: 'var(--red-text)' }}>
             {error}
           </p>
         )}
 
-        <div className="flex flex-wrap justify-center gap-3 mt-2">
-          {chips.map((chip) => (
-            <div
-              key={chip.label}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm"
-              style={{
-                background: 'var(--accent-subtle)',
-                color: 'var(--accent-text)',
-              }}
-            >
-              <chip.icon size={14} />
-              {chip.label}
-            </div>
-          ))}
-        </div>
-
-        {/* Recent channels */}
         <RecentChannels />
       </div>
     </div>

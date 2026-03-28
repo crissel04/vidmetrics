@@ -26,7 +26,7 @@ export default function AnalysisIndexPage() {
 
   // No open tabs — show a helpful empty state
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8 text-center fade-in">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-6 py-8 text-center fade-in">
       <div
         className="w-12 h-12 rounded-full flex items-center justify-center"
         style={{ background: 'var(--bg-app)' }}

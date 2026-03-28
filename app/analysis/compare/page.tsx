@@ -137,7 +137,7 @@ function ComparePageContent() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
+      <div className="flex flex-col items-center justify-center gap-4 px-6 py-20">
         <p style={{ color: 'var(--red-text)' }}>{error}</p>
       </div>
     )
@@ -148,7 +148,7 @@ function ComparePageContent() {
   }
 
   return (
-    <div className="flex flex-col gap-6 fade-in">
+    <div className="flex flex-col gap-6 px-6 fade-in">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           <ChannelSelector channels={selectorChannels} />
@@ -1099,7 +1099,7 @@ function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AICom
 
 function CompareLoadingSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 px-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[0, 1].map(i => (
           <div key={i} className="rounded-xl border p-5 flex items-center gap-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>

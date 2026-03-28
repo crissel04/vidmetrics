@@ -40,7 +40,7 @@ export default function ComparisonsPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-8 fade-in">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-8 text-center fade-in">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{ background: 'var(--bg-app)' }}
@@ -69,7 +69,7 @@ export default function ComparisonsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4 max-w-[1280px] mx-auto w-full">
+      <div className="mx-auto w-full max-w-[1280px] space-y-4 px-6">
         {[1, 2, 3].map(i => (
           <Skeleton key={i} className="h-[100px] w-full rounded-xl" />
         ))}
@@ -79,7 +79,7 @@ export default function ComparisonsPage() {
 
   if (comparisons.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center p-8 fade-in">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-8 text-center fade-in">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{ background: 'var(--bg-app)' }}
@@ -107,7 +107,7 @@ export default function ComparisonsPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-[1280px] mx-auto w-full fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-4 px-6 fade-in">
       <div>
         <h1
           className="font-semibold text-xl"
