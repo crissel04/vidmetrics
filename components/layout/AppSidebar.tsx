@@ -49,10 +49,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
-      <SidebarHeader className="p-2">
+      <SidebarHeader className="box-border flex h-14 min-h-14 shrink-0 flex-col justify-center gap-0 border-b border-[var(--border)] px-2 py-0">
         <div
           className={cn(
-            'flex w-full min-w-0 items-center',
+            'flex min-h-0 w-full min-w-0 items-center',
             collapsed ? 'justify-start gap-0' : 'justify-between gap-2'
           )}
         >

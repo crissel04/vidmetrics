@@ -23,7 +23,7 @@ export function WatchlistSidebarGroup() {
   }
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="px-2 pb-2 pt-1.5">
       <SidebarGroupLabel>Watchlist</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu className="gap-1">

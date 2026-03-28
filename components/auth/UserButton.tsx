@@ -1,20 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/lib/context/AuthContext'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { LogOut, Settings, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import AuthModal from './AuthModal'
 
 export default function UserButton() {
   const { user, loading, signOut } = useAuth()
-  const router = useRouter()
   const [authOpen, setAuthOpen] = useState(false)
 
   if (loading) {
@@ -50,55 +45,21 @@ export default function UserButton() {
   const initials = name.charAt(0).toUpperCase()
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button className="rounded-full focus:outline-none">
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={avatarUrl} alt={name} />
-              <AvatarFallback
-                className="text-xs"
-                style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
-              >
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </button>
-        }
-      />
-      <DropdownMenuContent
-        align="end"
-        className="w-[200px] shadow-none"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-0.5">
-            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-              {name}
-            </p>
-            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-              {user.email}
-            </p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator style={{ background: 'var(--border-subtle)' }} />
-        <DropdownMenuItem
-          onClick={() => router.push('/settings')}
-          className="gap-2 cursor-pointer text-sm"
+    <Link
+      href="/settings"
+      className="cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      title="Settings"
+      aria-label="Open settings"
+    >
+      <Avatar className="h-7 w-7">
+        <AvatarImage src={avatarUrl} alt={name} />
+        <AvatarFallback
+          className="text-xs"
+          style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
         >
-          <Settings size={13} />
-          Settings
-        </DropdownMenuItem>
-        <DropdownMenuSeparator style={{ background: 'var(--border-subtle)' }} />
-        <DropdownMenuItem
-          onClick={signOut}
-          className="gap-2 cursor-pointer text-sm"
-          style={{ color: 'var(--red-text)' }}
-        >
-          <LogOut size={13} />
-          Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    </Link>
   )
 }

@@ -12,11 +12,13 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Trash2, RotateCcw, Keyboard } from 'lucide-react'
+import { Trash2, RotateCcw, Keyboard, LogOut } from 'lucide-react'
+import { useAuth } from '@/lib/context/AuthContext'
 
 export default function SettingsPage() {
   const { settings, updateSetting, resetSettings, clearAllData } = useSettings()
   const { setTheme } = useTheme()
+  const { user, signOut } = useAuth()
   const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   return (
@@ -34,6 +36,35 @@ export default function SettingsPage() {
           Preferences are saved automatically to your browser.
         </p>
       </div>
+
+      {user && (
+        <Card style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle
+              className="text-base font-semibold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            >
+              Account
+            </CardTitle>
+            <CardDescription style={{ color: 'var(--text-muted)' }}>
+              Signed in as {user.email}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              style={{ color: 'var(--red-text)', borderColor: 'var(--border)' }}
+              onClick={() => signOut()}
+            >
+              <LogOut size={13} />
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Analysis preferences */}
       <Card style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
