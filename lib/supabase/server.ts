@@ -16,7 +16,10 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {}
+          } catch {
+            // Intentional: Server Components cannot set cookies.
+            // The session will be refreshed by middleware on the next request.
+          }
         },
       },
     }

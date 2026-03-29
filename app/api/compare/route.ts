@@ -16,6 +16,11 @@ interface ChannelResult {
 
 export async function POST(request: NextRequest) {
   return withErrorHandler(async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('[compare] ANTHROPIC_API_KEY is not set')
+      return createErrorResponse('AI service not configured', 503)
+    }
+
     const body = await request.json()
     const parsed = compareBodySchema.safeParse(body)
     if (!parsed.success) {
@@ -82,7 +87,11 @@ No markdown, no code blocks, just the JSON object.`
       })
 
       if (response.content[0].type === 'text') {
-        aiComparison = JSON.parse(response.content[0].text)
+        let rawText = response.content[0].text.trim()
+        if (rawText.startsWith('```')) {
+          rawText = rawText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+        }
+        aiComparison = JSON.parse(rawText)
       }
     } catch {
       aiComparison = {
