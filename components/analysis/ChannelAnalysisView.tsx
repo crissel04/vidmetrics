@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, useCallback, type ReactNode } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics, AIInsights } from '@/lib/types'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
 import { MetricCard } from '@/components/channel/MetricCard'
@@ -52,6 +52,11 @@ export function ChannelAnalysisView({
 }: ChannelAnalysisViewProps) {
   const [aiInsights, setAiInsights] = useState<AIInsights | null>(null)
   const [aiLoading, setAiLoading] = useState(true)
+
+  const handleInsightsLoaded = useCallback((insights: AIInsights) => {
+    setAiInsights(insights)
+    setAiLoading(false)
+  }, [])
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
   const [videoPerfTab, setVideoPerfTab] = useState('table')
@@ -150,10 +155,7 @@ export function ChannelAnalysisView({
             channel={channel}
             videos={videos}
             metrics={metrics}
-            onInsightsLoaded={insights => {
-              setAiInsights(insights)
-              setAiLoading(false)
-            }}
+            onInsightsLoaded={handleInsightsLoaded}
           />
           <ContentGapDetector insights={aiInsights} loading={aiLoading} />
         </AnalysisSection>

@@ -1,11 +1,15 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { RefreshCw, TrendingUp, CalendarDays, Heading2, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AIInsights, ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
+
+// Module-level cache: persists across component mounts within the same browser session.
+// Prevents re-fetching AI insights when switching back to a previously loaded channel tab.
+const aiInsightsSessionCache = new Map<string, AIInsights>()
 
 interface AIInsightsPanelProps {
   channel: ChannelInfo
@@ -56,7 +60,23 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | false>(false)
 
-  const fetchInsights = useCallback(async () => {
+  // Stable ref so the callback never appears in fetchInsights's dep array.
+  // Without this, an inline arrow in the parent creates a new reference every render,
+  // which recreates fetchInsights, which re-triggers useEffect → infinite fetch loop.
+  const onInsightsLoadedRef = useRef(onInsightsLoaded)
+  onInsightsLoadedRef.current = onInsightsLoaded
+
+  const fetchInsights = useCallback(async (isManualRetry = false) => {
+    // Serve from session cache on tab revisit (not on manual retry)
+    if (!isManualRetry) {
+      const cached = aiInsightsSessionCache.get(channel.id)
+      if (cached) {
+        setInsights(cached)
+        onInsightsLoadedRef.current?.(cached)
+        return
+      }
+    }
+
     setLoading(true)
     setError(false)
     setPartial({})
@@ -105,8 +125,9 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('application/json')) {
         const data = await response.json()
+        aiInsightsSessionCache.set(channel.id, data.insights)
         setInsights(data.insights)
-        onInsightsLoaded?.(data.insights)
+        onInsightsLoadedRef.current?.(data.insights)
         setLoading(false)
         return
       }
@@ -135,8 +156,9 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
           cleanText = cleanText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
         }
         const parsed: AIInsights = JSON.parse(cleanText)
+        aiInsightsSessionCache.set(channel.id, parsed)
         setInsights(parsed)
-        onInsightsLoaded?.(parsed)
+        onInsightsLoadedRef.current?.(parsed)
       } catch (err) {
         console.error('[AIInsightsPanel] JSON parse failed:', err)
         console.error('[AIInsightsPanel] Raw text:', accumulated.slice(0, 200))
@@ -147,7 +169,10 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       setError('Network error — please try again')
       setLoading(false)
     }
-  }, [channel, videos, metrics, onInsightsLoaded])
+  // Only channel.id in deps — channel object, videos, and metrics don't need to
+  // trigger a re-fetch since they're tied to the same channelId.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id])
 
   useEffect(() => {
     fetchInsights()
@@ -166,7 +191,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {error}
             </p>
-            <Button variant="outline" size="sm" onClick={fetchInsights} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => fetchInsights(true)} className="gap-1.5">
               <RefreshCw size={14} />
               Retry
             </Button>
