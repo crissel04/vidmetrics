@@ -3,24 +3,32 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { NextRequest, NextResponse } from 'next/server'
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Lazily initialized — only created when env vars are present and the first request arrives.
+// Module-level instantiation crashes Vercel Edge Runtime when env vars are absent.
+let channelRatelimit: Ratelimit | null = null
+let insightsRatelimit: Ratelimit | null = null
 
-// Channel analysis: 200 requests per hour per IP
-const channelRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(200, '1 h'),
-  prefix: 'ratelimit:channel',
-})
+function getRatelimits(): { channel: Ratelimit; insights: Ratelimit } | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
 
-// AI insights: 100 requests per hour per IP
-const insightsRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(100, '1 h'),
-  prefix: 'ratelimit:insights',
-})
+  if (!channelRatelimit || !insightsRatelimit) {
+    const redis = new Redis({ url, token })
+    channelRatelimit = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(200, '1 h'),
+      prefix: 'ratelimit:channel',
+    })
+    insightsRatelimit = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(100, '1 h'),
+      prefix: 'ratelimit:insights',
+    })
+  }
+
+  return { channel: channelRatelimit, insights: insightsRatelimit }
+}
 
 export async function middleware(request: NextRequest) {
   // Refresh Supabase auth session on every request
@@ -31,17 +39,15 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Skip rate limiting when Upstash credentials are missing
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return response
-  }
+  const limits = getRatelimits()
+  if (!limits) return response
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
   const path = request.nextUrl.pathname
 
   try {
     if (path.startsWith('/api/channel')) {
-      const { success } = await channelRatelimit.limit(ip)
+      const { success } = await limits.channel.limit(ip)
       if (!success) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait before analyzing another channel.' },
@@ -51,7 +57,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (path.startsWith('/api/insights') || path.startsWith('/api/compare')) {
-      const { success } = await insightsRatelimit.limit(ip)
+      const { success } = await limits.insights.limit(ip)
       if (!success) {
         return NextResponse.json(
           { error: 'AI analysis rate limit reached. Try again in an hour.' },
