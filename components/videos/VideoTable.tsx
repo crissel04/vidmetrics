@@ -37,24 +37,54 @@ import { TrendingBadge } from '@/components/insights/TrendingBadge'
 import { ThumbnailPopover } from '@/components/videos/ThumbnailPopover'
 import type { Video } from '@/lib/types'
 
+/** Title + Tier stay left; all other columns align with numeric-style headers. */
+function isVideoTableColumnRightAligned(columnId: string) {
+  return columnId !== 'title' && columnId !== 'performanceTier'
+}
+
 interface VideoTableProps {
   videos: Video[]
   onRowClick?: (video: Video) => void
-  hideFilters?: boolean
+  /**
+   * When false, parent renders date/search (and passes pre–time-filtered `videos`).
+   * Pass `globalFilter` + `onGlobalFilterChange` for the search field.
+   */
+  renderToolbar?: boolean
+  globalFilter?: string
+  onGlobalFilterChange?: (value: string) => void
 }
 
-export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTableProps) {
+export function VideoTable({
+  videos,
+  onRowClick,
+  renderToolbar = true,
+  globalFilter: globalFilterProp,
+  onGlobalFilterChange: onGlobalFilterChangeProp,
+}: VideoTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'publishedAt', desc: true }])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [internalGlobalFilter, setInternalGlobalFilter] = useState('')
   const [timeFilter, setTimeFilter] = useState<'all' | '30d' | '90d'>('all')
 
+  const toolbarExternal = renderToolbar === false
+  const globalFilter = toolbarExternal ? (globalFilterProp ?? '') : internalGlobalFilter
+
+  const setGlobalFilter = (updater: string | ((prev: string) => string)) => {
+    const next = typeof updater === 'function' ? updater(globalFilter) : updater
+    if (toolbarExternal) {
+      onGlobalFilterChangeProp?.(next)
+    } else {
+      setInternalGlobalFilter(next)
+    }
+  }
+
   const filteredByTime = useMemo(() => {
+    if (toolbarExternal) return videos
     if (timeFilter === 'all') return videos
     const now = Date.now()
     const days = timeFilter === '30d' ? 30 : 90
     const cutoff = now - days * 24 * 60 * 60 * 1000
     return videos.filter(v => new Date(v.publishedAt).getTime() >= cutoff)
-  }, [videos, timeFilter])
+  }, [videos, timeFilter, toolbarExternal])
 
   const columns: ColumnDef<Video>[] = useMemo(() => [
     {
@@ -67,7 +97,10 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
           title={row.original.title}
           duration={row.original.duration}
         >
-          <span className="truncate max-w-[300px] block text-sm">
+          <span
+            className="block max-w-[300px] truncate text-sm font-medium"
+            style={{ color: 'var(--text-primary)' }}
+          >
             {row.original.title}
           </span>
         </ThumbnailPopover>
@@ -86,7 +119,12 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
       accessorKey: 'viewCount',
       header: 'Views',
       cell: ({ row }) => (
-        <span className="text-sm tabular-nums font-medium">{formatNumber(row.original.viewCount)}</span>
+        <span
+          className="text-sm tabular-nums font-medium"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {formatNumber(row.original.viewCount)}
+        </span>
       ),
     },
     {
@@ -117,11 +155,15 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
       ),
       cell: ({ row }) => {
         const rate = row.original.engagementRate
-        let color = 'var(--text-primary)'
-        if (rate > 5) color = 'var(--green-text)'
-        else if (rate < 2) color = 'var(--red-text)'
+        const high = rate > 5
+        const low = rate < 2
         return (
-          <span className="text-sm tabular-nums font-medium" style={{ color }}>
+          <span
+            className={cn('text-sm tabular-nums', low ? 'font-normal' : 'font-medium')}
+            style={{
+              color: high ? 'var(--text-primary)' : 'var(--text-secondary)',
+            }}
+          >
             {rate.toFixed(2)}%
           </span>
         )
@@ -167,7 +209,9 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: updater => {
+      setGlobalFilter(typeof updater === 'function' ? updater(globalFilter) : updater)
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -181,7 +225,7 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
   return (
     <div className="fade-in">
       {/* Filters */}
-      {!hideFilters && (
+      {renderToolbar && (
         <div className="flex flex-wrap items-center gap-3 p-4 border-b border-[var(--border-subtle)]">
           {/* Time filter */}
           <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
@@ -219,65 +263,105 @@ export function VideoTable({ videos, onRowClick, hideFilters = false }: VideoTab
         </div>
       )}
 
-      {/* Table */}
-      <ScrollArea className="w-full">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-[var(--border-subtle)]">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className="cursor-pointer select-none text-xs font-medium whitespace-nowrap"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    <div className="flex items-center gap-1">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getIsSorted() && (
-                        <ArrowUp
-                          size={14}
-                          className={cn(
-                            'transition-transform duration-150',
-                            header.column.getIsSorted() === 'desc' && 'rotate-180'
-                          )}
-                        />
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="py-12 text-center">
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    No videos published in this period
-                  </p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row, i) => (
+      {/* Table — square corners: viewport must not use rounded-[inherit] from card ancestors */}
+      <ScrollArea className="w-full rounded-none" viewportClassName="!rounded-none">
+        <div
+          className="overflow-hidden"
+          style={{ border: '1px solid var(--border-subtle)', borderRadius: 0 }}
+        >
+          <Table className="w-full border-separate border-spacing-0">
+            <TableHeader className="[&_tr]:border-b-0">
+              {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow
-                  key={row.id}
-                  onClick={() => onRowClick?.(row.original)}
-                  className="cursor-pointer border-[var(--border-subtle)]"
+                  key={headerGroup.id}
+                  className="border-0 border-b border-solid hover:bg-transparent"
                   style={{
-                    background: i % 2 === 0 ? 'transparent' : 'var(--border-subtle)',
+                    background: 'var(--border-subtle)',
+                    borderColor: 'var(--border-subtle)',
                   }}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const alignRight = isVideoTableColumnRightAligned(header.column.id)
+                    return (
+                      <TableHead
+                        key={header.id}
+                        onClick={header.column.getToggleSortingHandler()}
+                        className={cn(
+                          'h-11 cursor-pointer select-none px-3 text-xs font-medium whitespace-nowrap',
+                          alignRight ? 'text-right' : 'text-left'
+                        )}
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        <div
+                          className={cn(
+                            'flex w-full items-center gap-1',
+                            alignRight ? 'justify-end' : 'justify-start'
+                          )}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() && (
+                            <ArrowUp
+                              size={14}
+                              className={cn(
+                                'transition-transform duration-150 shrink-0',
+                                header.column.getIsSorted() === 'desc' && 'rotate-180'
+                              )}
+                            />
+                          )}
+                        </div>
+                      </TableHead>
+                    )
+                  })}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length === 0 ? (
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableCell
+                    colSpan={columns.length}
+                    className="px-3 py-12 text-center"
+                  >
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      No videos published in this period
+                    </p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row, rowIndex) => {
+                  const pageRows = table.getRowModel().rows
+                  const isLastRow = rowIndex === pageRows.length - 1
+                  const rowDivider = !isLastRow
+                    ? { borderBottom: '1px dashed var(--border)' as const }
+                    : undefined
+                  return (
+                    <TableRow
+                      key={row.id}
+                      onClick={() => onRowClick?.(row.original)}
+                      className="cursor-pointer border-0 hover:bg-[var(--border-subtle)]"
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const alignRight = isVideoTableColumnRightAligned(cell.column.id)
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              'px-3 py-3 align-middle',
+                              alignRight ? 'text-right' : 'text-left'
+                            )}
+                            style={rowDivider}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
 

@@ -29,27 +29,45 @@ export function MetricCard({ label, value, format = 'number', stringValue, trend
       ? `${(mounted ? animatedValue / 100 : value / 100).toFixed(2)}%`
       : formatNumber(mounted ? animatedValue : value)
 
+  const gridLine =
+    'color-mix(in srgb, var(--border-strong) 32%, transparent)'
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
-      <div className="flex items-center gap-1.5">
-        <p
-          className="text-xs font-medium uppercase tracking-wide"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          {label}
-        </p>
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </div>
-      <div className="flex items-end gap-3 mt-2">
-        <p
-          className="text-2xl font-bold tabular-nums"
-          style={{ fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}
-        >
-          {displayValue}
-        </p>
-        {trend !== undefined && (
-          <TrendBadge value={trend} label={trendLabel} />
-        )}
+    <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        aria-hidden
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, ${gridLine} 1px, transparent 1px),
+            linear-gradient(to bottom, ${gridLine} 1px, transparent 1px)
+          `,
+          backgroundSize: '24px 24px',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, black)',
+          maskImage: 'linear-gradient(to bottom, transparent, black)',
+        }}
+      />
+      <div className="relative z-[1]">
+        <div className="flex items-center gap-1.5">
+          <p
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {label}
+          </p>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
+        <div className="flex items-end gap-3 mt-2">
+          <p
+            className="text-2xl font-bold tabular-nums"
+            style={{ fontFamily: 'var(--font-display)', fontVariantNumeric: 'tabular-nums' }}
+          >
+            {displayValue}
+          </p>
+          {trend !== undefined && (
+            <TrendBadge value={trend} label={trendLabel} />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -59,12 +77,18 @@ function TrendBadge({ value, label }: { value: number; label?: string }) {
   const isPositive = value >= 0
   const Icon = isPositive ? TrendingUp : TrendingDown
 
+  const fg = isPositive ? 'var(--green-text)' : 'var(--red-text)'
+  const borderSoft = isPositive
+    ? 'color-mix(in srgb, var(--green-text) 28%, transparent)'
+    : 'color-mix(in srgb, var(--red-text) 28%, transparent)'
+
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium badge-pulse"
+      className="inline-flex items-center gap-1 border border-solid px-2 py-0.5 rounded-md text-xs font-medium badge-pulse"
       style={{
         background: isPositive ? 'var(--green-subtle)' : 'var(--red-subtle)',
-        color: isPositive ? 'var(--green-text)' : 'var(--red-text)',
+        color: fg,
+        borderColor: borderSoft,
       }}
     >
       <Icon size={10} />

@@ -1,13 +1,23 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import Image from 'next/image'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Card, CardContent } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { formatNumber, formatDate, formatDuration } from '@/lib/utils'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { cn, formatNumber, formatDuration } from '@/lib/utils'
 import type { Video, ChannelMetrics, ContentSignals } from '@/lib/types'
 
 const chartConfig = {
@@ -46,12 +56,12 @@ export function VideoDeepDive({ video, metrics, open, onOpenChange }: VideoDeepD
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[560px] sm:max-w-[560px] overflow-y-auto">
+      <SheetContent side="right" className="overflow-y-auto gap-6">
         <SheetHeader>
           <SheetTitle>{video.title}</SheetTitle>
           <SheetDescription className="sr-only">Video deep dive analysis</SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-6 p-6 pb-10">
+        <div className="flex flex-col gap-8 p-6 pb-10">
           {content}
         </div>
       </SheetContent>
@@ -62,64 +72,67 @@ export function VideoDeepDive({ video, metrics, open, onOpenChange }: VideoDeepD
 function DeepDiveContent({ video, metrics }: { video: Video; metrics: ChannelMetrics }) {
   const signals = useMemo(() => computeContentSignals(video, metrics), [video, metrics])
   const velocityCurve = useMemo(() => computeVelocityCurve(video), [video])
-  const sentence = useMemo(() => buildPerformanceSentence(video, signals, metrics), [video, signals, metrics])
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* Thumbnail */}
-      <div className="relative w-full aspect-video rounded-lg overflow-hidden" style={{ background: 'var(--bg-app)' }}>
-        <Image
-          src={video.thumbnailUrl}
-          alt={video.title}
-          fill
-          className="object-cover"
-          sizes="560px"
-        />
-      </div>
-
-      {/* Meta */}
-      <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <span>{formatDate(video.publishedAt)}</span>
-        <span>·</span>
-        <span>{formatDuration(video.duration)}</span>
-        <span>·</span>
-        <span className="tabular-nums">{formatNumber(Math.round(video.viewsPerDay))} views/day</span>
+    <div className="flex flex-col gap-10">
+      {/* Thumbnail + stats (tight to image) */}
+      <div className="flex flex-col gap-2">
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden" style={{ background: 'var(--bg-app)' }}>
+          <Image
+            src={video.thumbnailUrl}
+            alt={video.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, min(384px, 75vw)"
+          />
+        </div>
+        <div
+          className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium tabular-nums"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          <span>
+            {video.daysLive === 1 ? '1 day' : `${video.daysLive} days`} since posted
+          </span>
+          <span className="font-normal" style={{ color: 'var(--text-muted)' }}>
+            ·
+          </span>
+          <span>{formatDuration(video.duration)}</span>
+          <span className="font-normal" style={{ color: 'var(--text-muted)' }}>
+            ·
+          </span>
+          <span>{formatNumber(Math.round(video.viewsPerDay))} avg views/day</span>
+        </div>
       </div>
 
       {/* Section 1 — Performance vs channel average */}
-      <div
-        className="rounded-xl border p-4 flex flex-col gap-3"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
-        <h3 className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-          Performance vs Channel Average
-        </h3>
-        <ComparisonBar
-          label="Views"
-          videoVal={video.viewCount}
-          channelAvg={metrics.avgViews}
-        />
-        <ComparisonBar
-          label="Engagement"
-          videoVal={video.engagementRate}
-          channelAvg={metrics.avgEngagementRate}
-          isPercent
-        />
-        <ComparisonBar
-          label="Comments"
-          videoVal={video.commentCount}
-          channelAvg={metrics.avgViews > 0 ? metrics.avgEngagementRate * metrics.avgViews / 200 : 0}
-        />
-      </div>
+      <section className="flex flex-col gap-3">
+        <SectionTitle>Performance vs channel average</SectionTitle>
+        <div className="flex flex-col gap-3">
+          <ComparisonMetricCard
+            label="Views"
+            videoVal={video.viewCount}
+            channelAvg={metrics.avgViews}
+          />
+          <ComparisonMetricCard
+            label="Engagement"
+            videoVal={video.engagementRate}
+            channelAvg={metrics.avgEngagementRate}
+            isPercent
+          />
+          <ComparisonMetricCard
+            label="Comments"
+            videoVal={video.commentCount}
+            channelAvg={metrics.avgViews > 0 ? (metrics.avgEngagementRate * metrics.avgViews) / 200 : 0}
+          />
+        </div>
+      </section>
 
       {/* Section 2 — Velocity curve */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
-        <h3 className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>
-          Estimated View Velocity (Modelled)
-        </h3>
+      <section className="flex flex-col gap-3">
+        <SectionTitle>Estimated view velocity (modelled)</SectionTitle>
+        <div
+          className="rounded-xl border p-4"
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+        >
         <ChartContainer config={chartConfig} className="h-[180px] w-full">
           <AreaChart data={velocityCurve}>
             <defs>
@@ -153,40 +166,145 @@ function DeepDiveContent({ video, metrics }: { video: Video; metrics: ChannelMet
             />
           </AreaChart>
         </ChartContainer>
-      </div>
+        </div>
+      </section>
 
       {/* Section 3 — Content signals */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-      >
-        <h3 className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>
-          Content Signals
-        </h3>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <SignalItem label="Title length" value={`${signals.titleLength} chars`} />
-          <SignalItem label="Has number" value={signals.hasNumber ? 'Yes' : 'No'} />
-          <SignalItem label="Has question" value={signals.hasQuestion ? 'Yes' : 'No'} />
-          <SignalItem label="Duration" value={signals.durationBucket === 'short' ? 'Short (<8 min)' : 'Long (8+ min)'} />
-          <SignalItem label="Upload day" value={signals.uploadDayName} highlight={signals.isOptimalDay} />
-          <SignalItem label="Upload hour" value={`${signals.uploadHour}:00 UTC`} highlight={signals.isOptimalHour} />
-        </div>
-      </div>
-
-      {/* Section 4 — Performance one-liner */}
-      {sentence && (
-        <p
-          className="text-sm italic px-1"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          {sentence}
-        </p>
-      )}
+      <section className="flex flex-col gap-3">
+        <SectionTitle>Content signals</SectionTitle>
+        <ContentSignalsTable signals={signals} />
+      </section>
     </div>
   )
 }
 
-function ComparisonBar({
+/** Matches overview `MetricCard` trend delta styling; shows e.g. 1.2× vs channel avg. */
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <h3
+      className="text-sm font-semibold"
+      style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+    >
+      {children}
+    </h3>
+  )
+}
+
+function ContentSignalsTable({ signals }: { signals: ContentSignals }) {
+  const rows: { metric: string; value: string; valueEmphasis?: boolean }[] = [
+    { metric: 'Title length', value: `${signals.titleLength} chars` },
+    { metric: 'Has number', value: signals.hasNumber ? 'Yes' : 'No' },
+    { metric: 'Has question', value: signals.hasQuestion ? 'Yes' : 'No' },
+    {
+      metric: 'Duration',
+      value: signals.durationBucket === 'short' ? 'Short (<8 min)' : 'Long (8+ min)',
+    },
+    {
+      metric: 'Upload day',
+      value: signals.isOptimalDay ? `${signals.uploadDayName} ✓` : signals.uploadDayName,
+      valueEmphasis: signals.isOptimalDay,
+    },
+    {
+      metric: 'Upload hour',
+      value: `${signals.uploadHour}:00 UTC${signals.isOptimalHour ? ' ✓' : ''}`,
+      valueEmphasis: signals.isOptimalHour,
+    },
+  ]
+
+  return (
+    <div
+      className="overflow-hidden rounded-xl border"
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+    >
+      <Table className="border-separate border-spacing-0">
+        <TableHeader className="[&_tr]:border-b-0">
+          <TableRow
+            className="border-0 border-b border-solid hover:bg-transparent"
+            style={{
+              background: 'var(--border-subtle)',
+              borderColor: 'var(--border-subtle)',
+            }}
+          >
+            <TableHead
+              className="h-9 px-3 text-left text-xs font-medium first:rounded-tl-md last:rounded-tr-md"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Signal
+            </TableHead>
+            <TableHead
+              className="h-9 px-3 text-right text-xs font-medium first:rounded-tl-md last:rounded-tr-md"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Value
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row, rowIndex) => {
+            const isLastRow = rowIndex === rows.length - 1
+            const rowDivider = !isLastRow
+              ? { borderBottom: '1px dashed var(--border)' as const }
+              : undefined
+            return (
+              <TableRow key={row.metric} className="border-0 hover:bg-transparent">
+                <TableCell
+                  className="px-3 py-2.5 text-sm font-medium"
+                  style={{ color: 'var(--text-primary)', ...rowDivider }}
+                >
+                  {row.metric}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'px-3 py-2.5 text-right text-sm',
+                    row.valueEmphasis ? 'font-medium' : 'font-normal'
+                  )}
+                  style={{
+                    color: row.valueEmphasis ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    ...rowDivider,
+                  }}
+                >
+                  {row.value}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function MultiplierDeltaBadge({ ratio }: { ratio: number }) {
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return (
+      <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        —
+      </span>
+    )
+  }
+  const isPositive = ratio >= 1
+  const fg = isPositive ? 'var(--green-text)' : 'var(--red-text)'
+  const borderSoft = isPositive
+    ? 'color-mix(in srgb, var(--green-text) 28%, transparent)'
+    : 'color-mix(in srgb, var(--red-text) 28%, transparent)'
+  const Icon = isPositive ? TrendingUp : TrendingDown
+
+  return (
+    <span
+      className="badge-pulse inline-flex items-center gap-1 rounded-md border border-solid px-2 py-0.5 text-xs font-medium"
+      style={{
+        background: isPositive ? 'var(--green-subtle)' : 'var(--red-subtle)',
+        color: fg,
+        borderColor: borderSoft,
+      }}
+    >
+      <Icon size={10} />
+      {ratio.toFixed(1)}×
+    </span>
+  )
+}
+
+function ComparisonMetricCard({
   label,
   videoVal,
   channelAvg,
@@ -200,62 +318,67 @@ function ComparisonBar({
   const maxVal = Math.max(videoVal, channelAvg, 1)
   const videoPct = Math.min((videoVal / maxVal) * 100, 100)
   const avgPct = Math.min((channelAvg / maxVal) * 100, 100)
-  const ratio = channelAvg > 0 ? (videoVal / channelAvg) : 0
-  const isAbove = ratio > 1
+  const ratio = channelAvg > 0 ? videoVal / channelAvg : 0
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
-        <span
-          className="font-medium tabular-nums"
-          style={{ color: isAbove ? 'var(--green-text)' : ratio < 1 ? 'var(--red-text)' : 'var(--text-primary)' }}
-        >
-          {ratio > 0 ? `${ratio.toFixed(1)}×` : '—'}
-        </span>
-      </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] w-16 shrink-0" style={{ color: 'var(--text-muted)' }}>This video</span>
-          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${videoPct}%`, background: 'var(--accent)' }}
-            />
+    <Card
+      className="shadow-none gap-0 py-0"
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+    >
+      <CardContent className="flex flex-col gap-3 p-4">
+        <div>
+          <p
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {label}
+          </p>
+          <div className="mt-2 flex items-end gap-3">
+            <p
+              className="text-2xl font-bold tabular-nums"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontVariantNumeric: 'tabular-nums',
+                color: 'var(--text-primary)',
+              }}
+            >
+              {isPercent ? `${videoVal.toFixed(1)}%` : formatNumber(videoVal)}
+            </p>
+            <MultiplierDeltaBadge ratio={ratio} />
           </div>
-          <span className="text-[10px] tabular-nums w-12 text-right" style={{ color: 'var(--text-primary)' }}>
-            {isPercent ? `${videoVal.toFixed(1)}%` : formatNumber(videoVal)}
-          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] w-16 shrink-0" style={{ color: 'var(--text-muted)' }}>Ch. avg</span>
-          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${avgPct}%`, background: 'var(--text-muted)' }}
-            />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="w-16 shrink-0 text-[10px] font-medium" style={{ color: 'var(--text-primary)' }}>
+              This video
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-sm" style={{ background: 'var(--border-subtle)' }}>
+              <div
+                className="h-full rounded-sm"
+                style={{ width: `${videoPct}%`, background: 'var(--accent)' }}
+              />
+            </div>
+            <span className="w-12 text-right text-[10px] tabular-nums" style={{ color: 'var(--text-primary)' }}>
+              {isPercent ? `${videoVal.toFixed(1)}%` : formatNumber(videoVal)}
+            </span>
           </div>
-          <span className="text-[10px] tabular-nums w-12 text-right" style={{ color: 'var(--text-secondary)' }}>
-            {isPercent ? `${channelAvg.toFixed(1)}%` : formatNumber(channelAvg)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="w-16 shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              Ch. avg
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-sm" style={{ background: 'var(--border-subtle)' }}>
+              <div
+                className="h-full rounded-sm"
+                style={{ width: `${avgPct}%`, background: 'var(--text-muted)' }}
+              />
+            </div>
+            <span className="w-12 text-right text-[10px] tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+              {isPercent ? `${channelAvg.toFixed(1)}%` : formatNumber(channelAvg)}
+            </span>
+          </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function SignalItem({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <p
-        className="text-sm font-medium"
-        style={{ color: highlight ? 'var(--green-text)' : 'var(--text-primary)' }}
-      >
-        {value}
-        {highlight && ' ✓'}
-      </p>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -317,26 +440,3 @@ function computeVelocityCurve(video: Video): { day: number; views: number }[] {
   return points
 }
 
-function buildPerformanceSentence(video: Video, signals: ContentSignals, metrics: ChannelMetrics): string {
-  const parts: string[] = []
-
-  const ratio = (video.viewCount / Math.max(metrics.avgViews, 1)).toFixed(1)
-  if (parseFloat(ratio) > 1.2) {
-    parts.push(`Outperformed the channel average by ${ratio}×`)
-  } else if (parseFloat(ratio) < 0.8) {
-    parts.push(`Underperformed the channel average by ${ratio}×`)
-  }
-
-  const strengths: string[] = []
-  if (signals.hasNumber) strengths.push('numbered title')
-  if (signals.hasQuestion) strengths.push('question-format title')
-  if (signals.durationBucket === 'short') strengths.push('short-form format')
-  if (signals.durationBucket === 'long') strengths.push('long-form format')
-  if (signals.isOptimalDay) strengths.push(`posted on their strongest day (${signals.uploadDayName})`)
-
-  if (strengths.length > 0) {
-    parts.push(`driven by ${strengths.slice(0, 2).join(' and ')}`)
-  }
-
-  return parts.length > 0 ? parts.join(' — ') + '.' : ''
-}

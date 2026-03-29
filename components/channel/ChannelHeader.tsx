@@ -20,7 +20,7 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
   const bookmarked = isWatchlisted(channel.id)
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
+    <div className="fade-in">
       <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
@@ -63,11 +63,12 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
             href={`https://www.youtube.com/channel/${channel.id}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="cursor-pointer"
           >
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 cursor-pointer"
               style={{ borderColor: 'var(--border)' }}
             >
               <ExternalLink size={14} />
@@ -94,7 +95,7 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
                 toast('Added to Watchlist')
               }
             }}
-            className="gap-1.5"
+            className="gap-1.5 cursor-pointer"
             style={{ borderColor: 'var(--border)' }}
           >
             <Bookmark
@@ -112,7 +113,7 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
               variant="outline"
               size="sm"
               onClick={onShare}
-              className="gap-1.5"
+              className="gap-1.5 cursor-pointer"
               style={{ borderColor: 'var(--border)' }}
             >
               <Share2 size={14} />
