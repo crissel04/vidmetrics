@@ -461,7 +461,7 @@ function ChannelIdentityRow({ channels }: { channels: ChannelData[] }) {
               {ch.metrics.category && (
                 <span
                   className="mt-1.5 inline-block text-[10px] font-medium px-2 py-0.5 rounded-full capitalize"
-                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
+                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', border: '1px solid color-mix(in srgb, var(--accent-text) 28%, transparent)' }}
                 >
                   {ch.metrics.category}
                 </span>

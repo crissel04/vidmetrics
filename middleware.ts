@@ -22,7 +22,7 @@ function getRatelimits(): { channel: Ratelimit; insights: Ratelimit } | null {
     })
     insightsRatelimit = new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(100, '1 h'),
+      limiter: Ratelimit.slidingWindow(500, '1 h'),
       prefix: 'ratelimit:insights',
     })
   }
