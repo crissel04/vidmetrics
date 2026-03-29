@@ -94,3 +94,50 @@ export function exportToCSV(videos: Video[], channelTitle: string) {
   link.click()
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Normalizes any user input into a full YouTube channel URL that resolveChannelId can handle.
+ *
+ * Accepted inputs:
+ * - Full URLs: https://youtube.com/@MrBeast, youtube.com/channel/UC..., etc.
+ * - Bare handles: @MrBeast, MrBeast
+ * - Channel IDs: UCX6OQ3DkcsbYNE6H8uQQuVA
+ *
+ * Returns null if the input is empty.
+ * Throws if the input looks like a non-YouTube URL.
+ */
+export function normalizeChannelInput(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) throw new Error('Please enter a YouTube channel URL or @handle')
+
+  // Already a full URL
+  if (/^https?:\/\//i.test(trimmed)) {
+    const parsed = new URL(trimmed)
+    if (!parsed.hostname.includes('youtube.com') && !parsed.hostname.includes('youtu.be')) {
+      throw new Error("That doesn't look like a YouTube channel URL")
+    }
+    return trimmed
+  }
+
+  // URL without protocol (e.g. youtube.com/@channel)
+  if (/^(www\.)?youtube\.com\//i.test(trimmed)) {
+    return `https://${trimmed}`
+  }
+
+  // Bare @handle (e.g. @MrBeast)
+  if (trimmed.startsWith('@')) {
+    return `https://www.youtube.com/${trimmed}`
+  }
+
+  // Raw channel ID (starts with UC and is 24 chars)
+  if (/^UC[a-zA-Z0-9_-]{22}$/.test(trimmed)) {
+    return `https://www.youtube.com/channel/${trimmed}`
+  }
+
+  // Bare handle without @ (e.g. MrBeast) — treat as @handle
+  if (/^[a-zA-Z0-9_.-]+$/.test(trimmed) && trimmed.length <= 50) {
+    return `https://www.youtube.com/@${trimmed}`
+  }
+
+  throw new Error("That doesn't look like a YouTube channel URL or handle")
+}

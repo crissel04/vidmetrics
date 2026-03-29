@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useChannelTabs, type ChannelTab } from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
+import { normalizeChannelInput } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface SelectedChannel {
@@ -182,8 +183,7 @@ function AddChannelPopover({
     setError('')
 
     try {
-      let fullUrl = url.trim()
-      if (!fullUrl.startsWith('http')) fullUrl = `https://${fullUrl}`
+      const fullUrl = normalizeChannelInput(url)
 
       const res = await fetch(`/api/channel?url=${encodeURIComponent(fullUrl)}`)
       const data = await res.json()
@@ -218,8 +218,8 @@ function AddChannelPopover({
       setUrl('')
       setError('')
       setOpen(false)
-    } catch {
-      setError('Network error')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setLoading(false)
     }
@@ -305,7 +305,7 @@ function AddChannelPopover({
         </p>
         <div className="flex gap-1.5">
           <Input
-            placeholder="Paste YouTube channel URL..."
+            placeholder="@channel or paste URL"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError('') }}
             onKeyDown={(e) => e.key === 'Enter' && !loading && handleSubmit()}

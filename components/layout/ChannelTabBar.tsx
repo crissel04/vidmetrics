@@ -16,6 +16,7 @@ import {
   type Tab,
 } from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
+import { normalizeChannelInput } from '@/lib/utils'
 import {
   DndContext,
   DragOverlay,
@@ -168,6 +169,15 @@ export function ChannelTabBar() {
         </DragOverlay>
       </DndContext>
 
+      {/* Add channel button */}
+      <AddChannelPopover
+        isFirst={tabs.length === 0}
+        onAdd={(tab) => {
+          addTab(tab)
+          router.push(`/analysis/${tab.channelId}`)
+        }}
+      />
+
       {/* New comparison button — only when 2+ channel tabs */}
       {channelTabs.length >= 2 && (
         <button
@@ -185,15 +195,6 @@ export function ChannelTabBar() {
           New Comparison
         </button>
       )}
-
-      {/* Add channel button */}
-      <AddChannelPopover
-        isFirst={tabs.length === 0}
-        onAdd={(tab) => {
-          addTab(tab)
-          router.push(`/analysis/${tab.channelId}`)
-        }}
-      />
     </div>
   )
 }
@@ -487,8 +488,7 @@ function AddChannelPopover({
     setError('')
 
     try {
-      let fullUrl = url.trim()
-      if (!fullUrl.startsWith('http')) fullUrl = `https://${fullUrl}`
+      const fullUrl = normalizeChannelInput(url)
 
       const res = await fetch(`/api/channel?url=${encodeURIComponent(fullUrl)}`)
       const data = await res.json()
@@ -514,8 +514,8 @@ function AddChannelPopover({
       setUrl('')
       setError('')
       setOpen(false)
-    } catch {
-      setError('Network error')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setLoading(false)
     }
@@ -548,7 +548,7 @@ function AddChannelPopover({
         </p>
         <div className="flex gap-2">
           <Input
-            placeholder="youtube.com/@channel"
+            placeholder="@channel or paste URL"
             value={url}
             onChange={(e) => { setUrl(e.target.value); setError('') }}
             onKeyDown={(e) => e.key === 'Enter' && !loading && handleSubmit()}

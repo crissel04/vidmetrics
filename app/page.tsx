@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { RecentChannels } from '@/components/channel/RecentChannels'
 import { HeroBackground } from '@/components/layout/HeroBackground'
 import { VidMetricsLogo } from '@/components/layout/VidMetricsLogo'
+import { normalizeChannelInput } from '@/lib/utils'
 
 export default function HomePage() {
   const [url, setUrl] = useState('')
@@ -25,27 +26,18 @@ export default function HomePage() {
 
   async function handleAnalyze() {
     setError('')
-    if (!url.trim()) {
-      setError('Please enter a YouTube channel URL')
-      return
-    }
 
-    let parsedUrl: URL
+    let fullUrl: string
     try {
-      parsedUrl = new URL(url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`)
-    } catch {
-      setError("That doesn't look like a YouTube channel URL")
-      return
-    }
-
-    if (!parsedUrl.hostname.includes('youtube.com') && !parsedUrl.hostname.includes('youtu.be')) {
-      setError("That doesn't look like a YouTube channel URL")
+      fullUrl = normalizeChannelInput(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid input')
       return
     }
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/channel?url=${encodeURIComponent(parsedUrl.toString())}`)
+      const res = await fetch(`/api/channel?url=${encodeURIComponent(fullUrl)}`)
       const data = await res.json()
 
       if (!res.ok) {
@@ -89,7 +81,7 @@ export default function HomePage() {
               style={{ color: 'var(--text-muted)' }}
             />
             <Input
-              placeholder="https://youtube.com/@channel"
+              placeholder="@channel or youtube.com/@channel"
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value)
