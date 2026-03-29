@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown } from 'lucide-react'
 import { useCountUp } from '@/lib/hooks/useCountUp'
 import { formatNumber } from '@/lib/utils'
 
@@ -64,40 +63,9 @@ export function MetricCard({ label, value, format = 'number', stringValue, trend
           >
             {displayValue}
           </p>
-          {trend !== undefined && (
-            <TrendBadge value={trend} label={trendLabel} />
-          )}
         </div>
       </div>
     </div>
   )
 }
 
-function TrendBadge({ value, label }: { value: number; label?: string }) {
-  const isPositive = value >= 0
-  const Icon = isPositive ? TrendingUp : TrendingDown
-
-  const fg = isPositive ? 'var(--green-text)' : 'var(--red-text)'
-  const borderSoft = isPositive
-    ? 'color-mix(in srgb, var(--green-text) 28%, transparent)'
-    : 'color-mix(in srgb, var(--red-text) 28%, transparent)'
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 border border-solid px-2 py-0.5 rounded-md text-xs font-medium badge-pulse"
-      style={{
-        background: isPositive ? 'var(--green-subtle)' : 'var(--red-subtle)',
-        color: fg,
-        borderColor: borderSoft,
-      }}
-    >
-      <Icon size={10} />
-      {Math.abs(value).toFixed(1)}%
-      {label && (
-        <span style={{ color: 'var(--text-muted)' }} className="ml-0.5">
-          {label}
-        </span>
-      )}
-    </span>
-  )
-}

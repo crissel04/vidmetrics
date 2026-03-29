@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
-import { Minus, TrendingUp, TrendingDown, Check, BookmarkPlus, Loader2, GitCompare, Plus, ArrowUp, ArrowRight } from 'lucide-react'
+import { Minus, TrendingUp, TrendingDown, Check, BookmarkPlus, Loader2, GitCompare, Plus, ArrowUp, ArrowRight, Trophy, Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/context/AuthContext'
 import { useSavedComparisons } from '@/lib/context/SavedComparisonsContext'
@@ -22,7 +22,7 @@ import {
 } from 'recharts'
 import { format, subMonths, startOfMonth } from 'date-fns'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
-import { cn, formatNumber } from '@/lib/utils'
+import { cn, formatNumber, normalizeChannelInput } from '@/lib/utils'
 import { AnalysisSection } from '@/components/analysis/AnalysisSection'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -33,10 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { computeContentStrategy, computeTitlePatterns, computeMomentumScore } from '@/lib/metrics'
-import { ChannelSelector } from '@/components/compare/ChannelSelector'
+import { computeContentStrategy, computeTitlePatterns } from '@/lib/metrics'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
+import { useSettings } from '@/lib/context/SettingsContext'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { HeroBackground } from '@/components/layout/HeroBackground'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
@@ -60,10 +60,11 @@ interface CompareResult {
   aiComparison: AIComparison
 }
 
-const CHART_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-4)', 'var(--chart-5)']
+const CHART_COLORS = ['var(--accent)', 'var(--chart-5)', 'var(--chart-4)', 'var(--chart-2)']
 const BAR_RADIUS: [number, number, number, number] = [3, 3, 0, 0]
 const BAR_RADIUS_H: [number, number, number, number] = [0, 3, 3, 0]
 const axisTick = { fontSize: 10, fill: 'var(--text-muted)' }
+
 
 export default function ComparePage() {
   return <ComparePageContent />
@@ -85,13 +86,35 @@ export function ComparePageContent({
   const { user } = useAuth()
   const { saveComparison } = useSavedComparisons()
   const { updateComparisonTab } = useChannelTabs()
+  const { settings } = useSettings()
 
-  const [data, setData] = useState<CompareResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Build cache key from sorted channel IDs so we detect when we already have data
+  const allIds = [channelAId, channelBId, channelCId].filter(Boolean).sort()
+  const cacheKey = allIds.join(',')
+
+  // Try to build result from client-side cache on first render
+  const [data, setData] = useState<CompareResult | null>(() => {
+    if (!channelAId || !channelBId) return null
+    const a = channelCache.get(channelAId)
+    const b = channelCache.get(channelBId)
+    const c = channelCId ? channelCache.get(channelCId) : undefined
+    if (!a || !b || (channelCId && !c)) return null
+    return { channelA: a, channelB: b, channelC: c, aiComparison: { whoIsWinning: '', channelStrengths: {}, gapOpportunity: '' } }
+  })
+  const [loading, setLoading] = useState(!data)
+  const [aiLoading, setAiLoading] = useState(false)
   const [error, setError] = useState('')
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Stable refs so the fetch effect doesn't depend on context/callback identity
+  const channelCacheRef = useRef(channelCache)
+  channelCacheRef.current = channelCache
+  const updateComparisonTabRef = useRef(updateComparisonTab)
+  updateComparisonTabRef.current = updateComparisonTab
+  // Track which channel set we've already fetched to avoid duplicate requests
+  const fetchedKeyRef = useRef<string | null>(data ? cacheKey : null)
 
   useEffect(() => {
     if (!channelAId || !channelBId) {
@@ -101,15 +124,57 @@ export function ComparePageContent({
       return
     }
 
+    // Skip fetch if we already have data for these exact channels
+    if (fetchedKeyRef.current === cacheKey && data) {
+      setLoading(false)
+      return
+    }
+
+    // Check if all channels are already in client cache (e.g. from analysis page)
+    const cachedA = channelCacheRef.current.get(channelAId)
+    const cachedB = channelCacheRef.current.get(channelBId)
+    const cachedC = channelCId ? channelCacheRef.current.get(channelCId) : undefined
+    if (cachedA && cachedB && (!channelCId || cachedC)) {
+      // Build comparison from cached data — show channel data immediately
+      setData({ channelA: cachedA, channelB: cachedB, channelC: cachedC, aiComparison: { whoIsWinning: '', channelStrengths: {}, gapOpportunity: '' } })
+      fetchedKeyRef.current = cacheKey
+      setLoading(false)
+
+      // Fetch full comparison in background for AI insights
+      setAiLoading(true)
+      const bodyData: Record<string, string | number> = {
+        channelAUrl: `https://www.youtube.com/channel/${channelAId}`,
+        channelBUrl: `https://www.youtube.com/channel/${channelBId}`,
+        maxVideos: settings.videosToFetch,
+      }
+      if (channelCId) bodyData.channelCUrl = `https://www.youtube.com/channel/${channelCId}`
+
+      fetch('/api/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData),
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.aiComparison) {
+            setData(prev => prev ? { ...prev, aiComparison: json.aiComparison } : prev)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setAiLoading(false))
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     setError('')
 
     async function fetchComparison() {
       try {
-        const bodyData: Record<string, string> = {
+        const bodyData: Record<string, string | number> = {
           channelAUrl: `https://www.youtube.com/channel/${channelAId}`,
           channelBUrl: `https://www.youtube.com/channel/${channelBId}`,
+          maxVideos: settings.videosToFetch,
         }
         if (channelCId) {
           bodyData.channelCUrl = `https://www.youtube.com/channel/${channelCId}`
@@ -130,11 +195,15 @@ export function ComparePageContent({
           return
         }
 
+        // Set data FIRST, before any side effects that could trigger re-renders
+        setData(json)
+        fetchedKeyRef.current = cacheKey
+
         // Pre-populate channel cache so tab switches are instant
         const results = [json.channelA, json.channelB]
         if (json.channelC) results.push(json.channelC)
         results.forEach((r: ChannelData) => {
-          channelCache.set(r.channel.id, r)
+          channelCacheRef.current.set(r.channel.id, r)
         })
 
         // Update comparison tab name & channels with real data
@@ -148,10 +217,8 @@ export function ComparePageContent({
           const name = tabChannels
             .map(ch => (ch.handle || ch.title).replace('@', ''))
             .join(' vs ')
-          updateComparisonTab(compareTabId, { name, channels: tabChannels })
+          updateComparisonTabRef.current(compareTabId, { name, channels: tabChannels })
         }
-
-        setData(json)
       } catch {
         if (!cancelled) setError('Network error — please try again')
       } finally {
@@ -161,16 +228,12 @@ export function ComparePageContent({
     fetchComparison()
 
     return () => { cancelled = true }
-  }, [channelAId, channelBId, channelCId, channelCache])
+    // Only re-fetch when channel IDs actually change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey, compareTabId])
 
   const channels = data ? [data.channelA, data.channelB, ...(data.channelC ? [data.channelC] : [])] : []
 
-  const selectorChannels = channels.map(ch => ({
-    channelId: ch.channel.id,
-    title: ch.channel.title,
-    handle: ch.channel.handle,
-    thumbnailUrl: ch.channel.thumbnailUrl,
-  }))
 
   // Not enough channels — show empty state with channel selector
   if (!channelAId || !channelBId) {
@@ -200,11 +263,8 @@ export function ComparePageContent({
   return (
     <div className="mx-auto w-full max-w-[1280px] px-6 pt-6 fade-in">
       <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <ChannelSelector channels={selectorChannels} compareTabId={compareTabId} />
-        </div>
-        {user && channels.length >= 2 && (
+      {user && channels.length >= 2 && (
+        <div className="flex justify-end">
           <>
             <Button
               variant="outline"
@@ -301,8 +361,8 @@ export function ComparePageContent({
               </DialogContent>
             </Dialog>
           </>
-        )}
-      </div>
+        </div>
+      )}
 
       {!loading && !data && error && (
         <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -325,7 +385,7 @@ export function ComparePageContent({
               <ViewsOverTimeCard channels={channels} />
               <EngagementTrendCard channels={channels} />
               <UploadFrequencyCard channels={channels} />
-              <PerformanceConsistencyCard channels={channels} />
+              <ViewsPerVideoCard channels={channels} />
             </div>
           </AnalysisSection>
 
@@ -345,6 +405,7 @@ export function ComparePageContent({
             <AIIntelligenceSection
               aiComparison={data.aiComparison}
               channels={channels}
+              loading={aiLoading}
             />
           </AnalysisSection>
         </div>
@@ -357,17 +418,25 @@ export function ComparePageContent({
 /* ─── Section 1: Channel Identity Row ─── */
 
 function ChannelIdentityRow({ channels }: { channels: ChannelData[] }) {
+  const gridLine = 'color-mix(in srgb, var(--border-strong) 32%, transparent)'
   return (
     <div className={`grid gap-4 ${channels.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-      {channels.map((ch) => {
-        const momentum = computeMomentumScore(ch.videos)
-        return (
-          <Card
-            key={ch.channel.id}
-            className="shadow-none gap-0 py-0"
-            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
-          >
-            <CardContent className="flex items-center gap-4 p-5">
+      {channels.map((ch) => (
+        <div
+          key={ch.channel.id}
+          className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-card)]"
+        >
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[inherit]"
+            aria-hidden
+            style={{
+              backgroundImage: `linear-gradient(to right, ${gridLine} 1px, transparent 1px), linear-gradient(to bottom, ${gridLine} 1px, transparent 1px)`,
+              backgroundSize: '24px 24px',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent, black)',
+              maskImage: 'linear-gradient(to bottom, transparent, black)',
+            }}
+          />
+          <div className="relative z-[1] flex items-center gap-4 p-5">
             <Avatar className="h-14 w-14 shrink-0">
               <AvatarImage src={ch.channel.thumbnailUrl} alt={ch.channel.title} />
               <AvatarFallback
@@ -386,37 +455,21 @@ function ChannelIdentityRow({ channels }: { channels: ChannelData[] }) {
               <p className="truncate text-xs" style={{ color: 'var(--text-muted)' }}>
                 {ch.channel.handle || ch.channel.id}
               </p>
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                <span className="text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                  {formatNumber(ch.channel.subscriberCount)} subs
-                </span>
-                {ch.metrics.category && (
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-full"
-                    style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
-                  >
-                    {ch.metrics.category}
-                  </span>
-                )}
+              <p className="mt-1.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                {formatNumber(ch.channel.subscriberCount)} subs · {formatNumber(ch.channel.videoCount)} videos · {formatNumber(ch.channel.viewCount)} views
+              </p>
+              {ch.metrics.category && (
                 <span
-                  className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: momentum.label === 'Accelerating' ? 'var(--green-subtle)' :
-                      momentum.label === 'Stable' ? 'var(--accent-subtle)' :
-                      momentum.label === 'Slowing' ? 'var(--amber-subtle)' : 'var(--bg-app)',
-                    color: momentum.label === 'Accelerating' ? 'var(--green-text)' :
-                      momentum.label === 'Stable' ? 'var(--accent-text)' :
-                      momentum.label === 'Slowing' ? 'var(--amber-text)' : 'var(--text-muted)',
-                  }}
+                  className="mt-1.5 inline-block text-[10px] font-medium px-2 py-0.5 rounded-full capitalize"
+                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
                 >
-                  {momentum.score} — {momentum.label}
+                  {ch.metrics.category}
                 </span>
-              </div>
+              )}
             </div>
-            </CardContent>
-          </Card>
-        )
-      })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -500,7 +553,15 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
                     className="h-11 px-3 text-right text-xs font-medium last:rounded-tr-md"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    {ch.channel.title.length > 18 ? `${ch.channel.title.slice(0, 18)}…` : ch.channel.title}
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarImage src={ch.channel.thumbnailUrl} alt={ch.channel.title} />
+                        <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '8px' }}>
+                          {ch.channel.title.slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {ch.channel.title.length > 18 ? `${ch.channel.title.slice(0, 18)}…` : ch.channel.title}
+                    </span>
                   </TableHead>
                 ))}
               </TableRow>
@@ -534,18 +595,17 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
                       return (
                         <TableCell
                           key={channels[i].channel.id}
-                          className="px-3 py-3 text-right text-sm tabular-nums font-medium"
+                          className={cn(
+                            'px-3 py-3 text-right text-sm tabular-nums',
+                            isWinner ? 'font-semibold' : 'font-medium'
+                          )}
                           style={{
-                            background: isWinner ? 'var(--green-subtle)' : undefined,
-                            color: isWinner ? 'var(--green-text)' : 'var(--text-primary)',
+                            color: 'var(--text-primary)',
                             ...rowDivider,
                           }}
                         >
                           <span className="inline-flex items-center justify-end gap-1.5">
                             {metric.format(val)}
-                            {!is3 && isWinner && (
-                              <Check size={12} style={{ color: 'var(--green-text)' }} />
-                            )}
                             {is3 && rank !== null && !allEqual && (
                               <span
                                 className="rounded px-1 py-0.5 text-[9px] font-semibold"
@@ -880,125 +940,89 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
   )
 }
 
-/* ─── Card 4: Performance consistency ─── */
+/* ─── Card 4: Views per video (avg) ─── */
 
-function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
-  // Check empty state: each channel needs >= 5 videos
-  const tooSparse = channels.filter(ch => ch.videos.length < 5)
+function ViewsPerVideoCard({ channels }: { channels: ChannelData[] }) {
+  // Build per-month average views per video for last 6 months
+  const now = new Date()
+  const months: string[] = []
+  for (let i = 5; i >= 0; i--) {
+    months.push(format(startOfMonth(subMonths(now, i)), 'yyyy-MM'))
+  }
 
-  if (tooSparse.length > 0) {
+  const chartData = months.map(month => {
+    const row: Record<string, string | number> = { month: format(new Date(month + '-01'), 'MMM yy') }
+    channels.forEach((ch, ci) => {
+      const vidsInMonth = ch.videos.filter(v => format(new Date(v.publishedAt), 'yyyy-MM') === month)
+      const avg = vidsInMonth.length > 0
+        ? Math.round(vidsInMonth.reduce((s, v) => s + v.viewCount, 0) / vidsInMonth.length)
+        : 0
+      row[`ch${ci}`] = avg
+    })
+    return row
+  })
+
+  // Check if there's enough data
+  const hasData = chartData.some(row => channels.some((_, ci) => (row[`ch${ci}`] as number) > 0))
+
+  if (!hasData) {
     return (
       <ChartCard
-        title="Performance consistency"
-        description="A gradual drop-off means consistent performance. A single tall bar means the channel relies on viral outliers."
+        title="Views per video"
+        description="Average views per video by month. Shows which channel gets more traction per upload."
       >
         <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>
-          Not enough video data for {tooSparse.map(ch => ch.channel.title).join(', ')} to render this chart.
+          Not enough video data to render this chart.
         </p>
       </ChartCard>
     )
   }
 
+  const config: Record<string, { label: string; color: string }> = {}
+  channels.forEach((ch, ci) => {
+    config[`ch${ci}`] = { label: ch.channel.title, color: CHART_COLORS[ci % CHART_COLORS.length] }
+  })
+
   return (
     <ChartCard
-      title="Performance consistency"
-      description="A gradual drop-off means consistent performance. A single tall bar means the channel relies on viral outliers."
+      title="Views per video"
+      description="Average views per video by month. Shows which channel gets more traction per upload."
     >
-      <div className="flex flex-col gap-4">
-        {channels.map((ch, ci) => {
-          const sorted = [...ch.videos]
-            .sort((a, b) => b.viewCount - a.viewCount)
-            .slice(0, 20)
-
-          const config: Record<string, { label: string; color: string }> = {
-            views: { label: 'Views', color: CHART_COLORS[ci % CHART_COLORS.length] },
-          }
-
-          const barData = sorted.map(v => ({
-            title: v.title.length > 35 ? v.title.slice(0, 35) + '...' : v.title,
-            views: v.viewCount,
-          }))
-
-          const avgViews = sorted.reduce((sum, v) => sum + v.viewCount, 0) / sorted.length
-
-          return (
-            <div key={ch.channel.id}>
-              {ci > 0 && (
+      <ChartContainer config={config} className="min-h-[220px] w-full">
+        <BarChart data={chartData} barGap={2}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+          <XAxis dataKey="month" tick={axisTick} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => formatNumber(v)} tick={axisTick} tickLine={false} axisLine={false} />
+          <ChartTooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null
+              return (
                 <div
-                  className="mb-4 border-t border-dashed border-[var(--border-subtle)]"
-                  aria-hidden
-                />
-              )}
-              <div className="mb-2 flex items-center gap-2">
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarImage src={ch.channel.thumbnailUrl} alt={ch.channel.title} />
-                  <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '8px' }}>
-                    {ch.channel.title.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span
-                  className="text-xs font-semibold"
-                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-secondary)' }}
+                  className="rounded-lg border px-2.5 py-1.5 text-xs"
+                  style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
                 >
-                  {ch.channel.title}
-                </span>
-              </div>
-              <ChartContainer config={config} className="min-h-[200px] w-full">
-                <BarChart data={barData} layout="vertical" barSize={14}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tickFormatter={(v) => formatNumber(v)}
-                    tick={axisTick}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="title"
-                    width={160}
-                    tick={axisTick}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <ChartTooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const d = payload[0].payload
-                      return (
-                        <div
-                          className="rounded-lg border px-2.5 py-1.5 text-xs"
-                          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
-                        >
-                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.title}</p>
-                          <p style={{ color: 'var(--text-secondary)' }}>{formatNumber(d.views)} views</p>
-                        </div>
-                      )
-                    }}
-                  />
-                  <ReferenceLine
-                    x={avgViews}
-                    stroke="var(--border-strong)"
-                    strokeDasharray="4 4"
-                    label={{
-                      value: 'Channel avg',
-                      position: 'top',
-                      fill: 'var(--text-muted)',
-                      fontSize: 10,
-                    }}
-                  />
-                  <Bar
-                    dataKey="views"
-                    radius={BAR_RADIUS_H}
-                    fill={CHART_COLORS[ci % CHART_COLORS.length]}
-                    fillOpacity={0.85}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          )
-        })}
-      </div>
+                  <p className="mb-1 font-medium" style={{ color: 'var(--text-primary)' }}>{label}</p>
+                  {payload.map((p) => (
+                    <p key={p.dataKey as string} style={{ color: p.color }}>
+                      {config[p.dataKey as string]?.label}: {formatNumber(p.value as number)}
+                    </p>
+                  ))}
+                </div>
+              )
+            }}
+          />
+          {channels.map((_, ci) => (
+            <Bar
+              key={`ch${ci}`}
+              dataKey={`ch${ci}`}
+              radius={BAR_RADIUS}
+              fill={CHART_COLORS[ci % CHART_COLORS.length]}
+              fillOpacity={0.85}
+            />
+          ))}
+        </BarChart>
+      </ChartContainer>
+      <InlineChartLegend channels={channels} />
     </ChartCard>
   )
 }
@@ -1058,7 +1082,15 @@ function ContentStrategySection({ channels }: { channels: ChannelData[] }) {
                     className="h-11 px-3 text-right text-xs font-medium last:rounded-tr-md"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    {s.channel.title.length > 18 ? `${s.channel.title.slice(0, 18)}…` : s.channel.title}
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarImage src={s.channel.thumbnailUrl} alt={s.channel.title} />
+                        <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '8px' }}>
+                          {s.channel.title.slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {s.channel.title.length > 18 ? `${s.channel.title.slice(0, 18)}…` : s.channel.title}
+                    </span>
                   </TableHead>
                 ))}
               </TableRow>
@@ -1152,7 +1184,15 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
                     className="h-11 px-3 text-right text-xs font-medium"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    {s.channel.title.length > 18 ? `${s.channel.title.slice(0, 18)}…` : s.channel.title}
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      <Avatar className="h-5 w-5 shrink-0">
+                        <AvatarImage src={s.channel.thumbnailUrl} alt={s.channel.title} />
+                        <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '8px' }}>
+                          {s.channel.title.slice(0, 1)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {s.channel.title.length > 18 ? `${s.channel.title.slice(0, 18)}…` : s.channel.title}
+                    </span>
                   </TableHead>
                 ))}
                 <TableHead
@@ -1220,98 +1260,126 @@ function TitlePatternSection({ channels }: { channels: ChannelData[] }) {
   }))
 
   return (
-    <Card className="shadow-none" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
-      <CardHeader className="pb-3">
-        <CardTitle
-          className="text-sm font-semibold"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-        >
-          Title pattern analysis
-        </CardTitle>
-        <CardDescription style={{ color: 'var(--text-muted)' }}>
-          Recurring words and title formats compared per channel.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div
-          className={cn(
-            'grid gap-4',
-            channels.length === 3 ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'
-          )}
-        >
-          {patterns.map(({ channel, patterns: p }) => (
-            <div
-              key={channel.id}
-              className="overflow-hidden rounded-xl border"
-              style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+    <div
+      className={cn(
+        'grid gap-6',
+        channels.length === 3 ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'
+      )}
+    >
+      {patterns.map(({ channel, patterns: p }) => (
+        <div key={channel.id} className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6 shrink-0">
+              <AvatarImage src={channel.thumbnailUrl} alt={channel.title} />
+              <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '9px' }}>
+                {channel.title.slice(0, 1)}
+              </AvatarFallback>
+            </Avatar>
+            <p
+              className="text-sm font-semibold"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
             >
-              <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
-                <p
-                  className="text-sm font-semibold"
-                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-                >
-                  {channel.title}
-                </p>
-              </div>
-              <div className="space-y-3 p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <MiniStat label="Question titles" value={`${p.hasQuestionMark.pct}%`} sub={`${formatNumber(p.hasQuestionMark.avgViews)} avg views`} />
-                  <MiniStat label="Number in title" value={`${p.hasNumber.pct}%`} sub={`${formatNumber(p.hasNumber.avgViews)} avg views`} />
-                  <MiniStat label="Short titles (≤40)" value={`${formatNumber(p.shortTitleAvgViews)}`} sub="avg views" />
-                  <MiniStat label="Long titles (>40)" value={`${formatNumber(p.longTitleAvgViews)}`} sub="avg views" />
-                </div>
-                {p.topWords.length > 0 && (
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                      Top recurring words
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {p.topWords.slice(0, 8).map(w => (
-                        <span
-                          key={w.word}
-                          className="rounded-md px-2 py-0.5 text-[10px]"
-                          style={{
-                            background: 'var(--border-subtle)',
-                            color: 'var(--text-secondary)',
-                          }}
-                        >
-                          {w.word} ({w.count})
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {channel.title}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MiniStat label="Question titles" value={`${p.hasQuestionMark.pct}%`} sub={`${formatNumber(p.hasQuestionMark.avgViews)} avg views`} />
+            <MiniStat label="Number in title" value={`${p.hasNumber.pct}%`} sub={`${formatNumber(p.hasNumber.avgViews)} avg views`} />
+            <MiniStat label="Short titles (≤40)" value={`${formatNumber(p.shortTitleAvgViews)}`} sub="avg views" />
+            <MiniStat label="Long titles (>40)" value={`${formatNumber(p.longTitleAvgViews)}`} sub="avg views" />
+          </div>
+          {p.topWords.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                Top recurring words
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {p.topWords.slice(0, 8).map(w => (
+                  <span
+                    key={w.word}
+                    className="rounded-md px-2 py-0.5 text-[10px]"
+                    style={{
+                      background: 'var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    {w.word} ({w.count})
+                  </span>
+                ))}
               </div>
             </div>
-          ))}
+          )}
         </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   )
 }
 
 function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div
-      className="rounded-md border px-2.5 py-2"
-      style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-app)' }}
-    >
-      <p className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-        {label}
-      </p>
-      <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
-        {value}
-      </p>
-      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-        {sub}
-      </p>
+    <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-lg font-bold tabular-nums" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>{value}</p>
+      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub}</p>
     </div>
   )
 }
 
 /* ─── AI Competitive Intelligence ─── */
 
-function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AIComparison; channels: ChannelData[] }) {
+function AIIntelligenceSection({ aiComparison, channels, loading }: { aiComparison: AIComparison; channels: ChannelData[]; loading?: boolean }) {
+  const hasContent = aiComparison.whoIsWinning || Object.keys(aiComparison.channelStrengths).length > 0 || aiComparison.gapOpportunity
+
+  if (loading && !hasContent) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+          <div className="mb-3 flex items-center gap-2.5">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-3/5" />
+          </div>
+        </div>
+        <div className={cn('grid gap-4', channels.length === 3 ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2')}>
+          {channels.map(ch => (
+            <div key={ch.channel.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+              <div className="mb-3 flex items-center gap-2.5">
+                <Skeleton className="h-6 w-6 rounded-full" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+          <div className="mb-3 flex items-center gap-2.5">
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!hasContent && !loading) {
+    return (
+      <p className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+        AI insights are not available for this comparison.
+      </p>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {aiComparison.whoIsWinning && (
@@ -1321,6 +1389,9 @@ function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AICom
               className="mb-2.5 flex items-center gap-2.5 border-b border-dashed pb-2.5"
               style={{ borderColor: 'var(--border-subtle)' }}
             >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }} aria-hidden>
+                <Trophy size={16} strokeWidth={2} />
+              </span>
               <h3
                 className="text-sm font-semibold"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
@@ -1352,6 +1423,12 @@ function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AICom
                   className="mb-2.5 flex items-center gap-2.5 border-b border-dashed pb-2.5"
                   style={{ borderColor: 'var(--border-subtle)' }}
                 >
+                  <Avatar className="h-6 w-6 shrink-0">
+                    <AvatarImage src={ch.channel.thumbnailUrl} alt={ch.channel.title} />
+                    <AvatarFallback style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '9px' }}>
+                      {ch.channel.title.slice(0, 1)}
+                    </AvatarFallback>
+                  </Avatar>
                   <h3
                     className="min-w-0 text-sm font-semibold leading-tight"
                     style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
@@ -1377,6 +1454,9 @@ function AIIntelligenceSection({ aiComparison, channels }: { aiComparison: AICom
               className="mb-2.5 flex items-center gap-2.5 border-b border-dashed pb-2.5"
               style={{ borderColor: 'var(--border-subtle)' }}
             >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }} aria-hidden>
+                <Lightbulb size={16} strokeWidth={2} />
+              </span>
               <h3
                 className="text-sm font-semibold"
                 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
@@ -1400,6 +1480,7 @@ function CompareEmptyState({ compareTabId }: { compareTabId?: string }) {
   const { channelTabs, addTab, updateComparisonTab } = useChannelTabs()
   const router = useRouter()
   const channelCache = useChannelCache()
+  const { settings } = useSettings()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [addedChannels, setAddedChannels] = useState<{ channelId: string; title: string; handle: string; thumbnailUrl: string }[]>([])
   const [addUrl, setAddUrl] = useState('')
@@ -1425,9 +1506,8 @@ function CompareEmptyState({ compareTabId }: { compareTabId?: string }) {
     setAddLoading(true)
     setAddError('')
     try {
-      let fullUrl = addUrl.trim()
-      if (!fullUrl.startsWith('http')) fullUrl = `https://${fullUrl}`
-      const res = await fetch(`/api/channel?url=${encodeURIComponent(fullUrl)}`)
+      const fullUrl = normalizeChannelInput(addUrl)
+      const res = await fetch(`/api/channel?url=${encodeURIComponent(fullUrl)}&maxVideos=${settings.videosToFetch}`)
       const data = await res.json()
       if (!res.ok) {
         setAddError(data.error || 'Channel not found')
@@ -1456,8 +1536,8 @@ function CompareEmptyState({ compareTabId }: { compareTabId?: string }) {
         setSelectedIds(prev => [...prev, data.channel.id])
       }
       setAddUrl('')
-    } catch {
-      setAddError('Network error')
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Network error')
     } finally {
       setAddLoading(false)
     }
@@ -1619,7 +1699,7 @@ function CompareEmptyState({ compareTabId }: { compareTabId?: string }) {
           </p>
           <div className="flex gap-2">
             <Input
-              placeholder="youtube.com/@channel"
+              placeholder="@channel or paste URL"
               value={addUrl}
               onChange={(e) => { setAddUrl(e.target.value); setAddError('') }}
               onKeyDown={(e) => e.key === 'Enter' && !addLoading && handleAddUrl()}

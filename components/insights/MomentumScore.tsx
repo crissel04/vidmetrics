@@ -88,14 +88,6 @@ export function MomentumScoreWidget({ metrics, sparklineData, uploadDayCounts }:
           )}
         </div>
 
-        <div
-          className="mt-4 pt-2 border-t border-dashed"
-          style={{ borderColor: 'var(--border-subtle)' }}
-        >
-          <p className="text-xs leading-snug" style={{ color: 'var(--text-secondary)' }}>
-            {explanation}
-          </p>
-        </div>
       </div>
 
       <div className={`${cardClass} flex h-full min-h-0 flex-col`}>
