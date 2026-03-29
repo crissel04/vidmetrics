@@ -2,6 +2,7 @@
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Info, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { InsightTimelineRailed } from '@/components/insights/InsightTimelineRailed'
 import { NICHE_BENCHMARKS } from '@/lib/benchmarks'
 import { formatNumber } from '@/lib/utils'
 import type { ChannelMetrics } from '@/lib/types'
@@ -21,7 +22,7 @@ export function NicheBenchmark({ metrics }: NicheBenchmarkProps) {
       status: getStatus(metrics.avgEngagementRate, benchmark.avgEngagementRate),
     },
     {
-      label: 'Views/video',
+      label: 'Views / video',
       channel: formatNumber(metrics.avgViews),
       niche: formatNumber(benchmark.avgViewsPerVideo),
       status: getStatus(metrics.avgViews, benchmark.avgViewsPerVideo),
@@ -37,10 +38,23 @@ export function NicheBenchmark({ metrics }: NicheBenchmarkProps) {
   const wins = comparisons.filter(c => c.status === 'above').length
   const summaryText = `Outperforming their niche on ${wins} of 3 key metrics`
 
+  const nicheTimelineItems = [
+    summaryText,
+    ...comparisons.map(c => {
+      const rel =
+        c.status === 'above' ? 'above niche average' : c.status === 'below' ? 'below niche average' : 'in line with niche average'
+      return `${c.label}: ${rel} (${c.channel} vs ${c.niche}).`
+    }),
+  ]
+  const nicheLayoutKey = `${wins}-${comparisons.map(c => `${c.label}-${c.status}-${c.channel}`).join('|')}`
+
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 fade-in">
-      <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+    <div className="fade-in space-y-4">
+      <div className="flex items-center gap-2">
+        <h3
+          className="text-sm font-semibold"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+        >
           Niche: {benchmark.label}
         </h3>
         <Tooltip>
@@ -57,26 +71,48 @@ export function NicheBenchmark({ metrics }: NicheBenchmarkProps) {
         </Tooltip>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {comparisons.map((comp) => (
-          <div key={comp.label} className="flex items-center justify-between text-sm">
-            <span style={{ color: 'var(--text-secondary)' }}>{comp.label}</span>
-            <div className="flex items-center gap-4">
-              <span className="font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>
+          <div
+            key={comp.label}
+            className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5"
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-wide"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {comp.label}
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className="text-3xl font-bold tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  color: 'var(--text-primary)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {comp.channel}
               </span>
               <StatusIcon status={comp.status} />
-              <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                {comp.niche}
-              </span>
+            </div>
+            <div
+              className="mt-4 border-t border-dashed pt-1.5"
+              style={{ borderColor: 'var(--border-subtle)' }}
+            >
+              <p className="text-xs leading-snug" style={{ color: 'var(--text-muted)' }}>
+                Niche avg · {comp.niche}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      <p className="text-xs mt-4 pt-3 border-t border-[var(--border-subtle)]" style={{ color: 'var(--text-secondary)' }}>
-        {summaryText}
-      </p>
+      <InsightTimelineRailed
+        layoutKey={nicheLayoutKey}
+        railConnectTopClass="-top-4"
+        items={nicheTimelineItems}
+      />
     </div>
   )
 }

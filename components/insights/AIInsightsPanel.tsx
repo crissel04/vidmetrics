@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { RefreshCw, TrendingUp, CalendarDays, Heading2, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AIInsights, ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
@@ -25,6 +26,29 @@ function parsePartialInsights(text: string): Partial<AIInsights> {
   }
   return partial
 }
+
+const SECTIONS = [
+  {
+    key: 'whatIsWorking' as const,
+    label: "What's working",
+    Icon: TrendingUp,
+  },
+  {
+    key: 'uploadPattern' as const,
+    label: 'Upload pattern',
+    Icon: CalendarDays,
+  },
+  {
+    key: 'titleFormula' as const,
+    label: 'Title formula',
+    Icon: Heading2,
+  },
+  {
+    key: 'gapOpportunity' as const,
+    label: 'Gap opportunity',
+    Icon: Lightbulb,
+  },
+]
 
 export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: AIInsightsPanelProps) {
   const [insights, setInsights] = useState<AIInsights | null>(null)
@@ -87,7 +111,6 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
         return
       }
 
-      // Streaming response
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let accumulated = ''
@@ -107,7 +130,6 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
       }
 
       try {
-        // Strip markdown fences if present
         let cleanText = accumulated.trim()
         if (cleanText.startsWith('```')) {
           cleanText = cleanText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
@@ -131,69 +153,76 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
     fetchInsights()
   }, [fetchInsights])
 
-  const sections = [
-    { key: 'whatIsWorking' as const, label: "What's Working" },
-    { key: 'uploadPattern' as const, label: 'Upload Pattern' },
-    { key: 'titleFormula' as const, label: 'Title Formula' },
-    { key: 'gapOpportunity' as const, label: 'Gap Opportunity' },
-  ]
-
   const data = insights ?? partial
 
   return (
-    <div
-      className="rounded-xl bg-[var(--bg-card)] p-6 fade-in"
-      style={{ border: '1px solid var(--accent)', borderColor: 'var(--accent)' }}
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-        <h3 className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-          AI Analysis
-        </h3>
-      </div>
-
+    <div className="fade-in flex flex-col gap-4">
       {error && !loading && (
-        <div className="flex flex-col items-center gap-3 py-8">
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {error}
-          </p>
-          <Button variant="outline" size="sm" onClick={fetchInsights} className="gap-1.5">
-            <RefreshCw size={14} />
-            Retry
-          </Button>
-        </div>
+        <Card
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+          className="shadow-none gap-0 py-0"
+        >
+          <CardContent className="flex flex-col items-center gap-3 px-4 py-6">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {error}
+            </p>
+            <Button variant="outline" size="sm" onClick={fetchInsights} className="gap-1.5">
+              <RefreshCw size={14} />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {!error && (
-        <div className="space-y-4">
-          {sections.map((section) => {
-            const value = data[section.key]
-            if (!value && !loading) return null
-            return (
-              <div key={section.key} className="fade-in">
-                <p
-                  className="text-xs font-medium uppercase tracking-wide mb-1"
-                  style={{ color: 'var(--accent-text)' }}
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {SECTIONS.map(({ key, label, Icon }) => {
+              const value = data[key]
+              return (
+                <Card
+                  key={key}
+                  style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+                  className="shadow-none gap-0 py-0"
                 >
-                  {section.label}
-                </p>
-                {value ? (
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                    {value}
-                  </p>
-                ) : (
-                  <Skeleton className="h-12 w-full" />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {insights && (
-        <p className="text-xs mt-4 text-right" style={{ color: 'var(--text-muted)' }}>
-          Powered by Claude
-        </p>
+                  <CardContent className="px-4 py-4 sm:px-5">
+                    <div
+                      className="mb-2.5 flex items-center gap-2.5 border-b border-dashed pb-2.5"
+                      style={{ borderColor: 'var(--border-subtle)' }}
+                    >
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
+                        style={{
+                          background: 'var(--accent-subtle)',
+                          color: 'var(--accent-text)',
+                        }}
+                        aria-hidden
+                      >
+                        <Icon size={16} strokeWidth={2} />
+                      </span>
+                      <h3
+                        className="min-w-0 text-sm font-semibold leading-tight"
+                        style={{
+                          fontFamily: 'var(--font-display)',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
+                        {label}
+                      </h3>
+                    </div>
+                    {value ? (
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                        {value}
+                      </p>
+                    ) : (
+                      <Skeleton className="h-12 w-full" />
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

@@ -1,5 +1,3 @@
-import { Badge } from '@/components/ui/badge'
-
 interface TrendingBadgeProps {
   tier: 'hot' | 'rising' | 'average' | 'underperforming'
 }
@@ -17,12 +15,15 @@ export function TrendingBadge({ tier }: TrendingBadgeProps) {
     return <span style={{ color: config.color }}>—</span>
   }
   return (
-    <Badge
-      variant="secondary"
-      className="text-xs font-medium px-2 py-0.5"
-      style={{ background: config.bg, color: config.color, border: 'none' }}
+    <span
+      className="inline-flex items-center rounded-md border border-solid px-2 py-0.5 text-xs font-medium"
+      style={{
+        background: config.bg,
+        color: config.color,
+        borderColor: `color-mix(in srgb, ${config.color} 28%, transparent)`,
+      }}
     >
       {config.label}
-    </Badge>
+    </span>
   )
 }
