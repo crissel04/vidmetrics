@@ -5,6 +5,7 @@ import { compareBodySchema } from '@/lib/schemas'
 import { resolveChannelId, getCachedChannelData } from '@/lib/youtube'
 import { computeAllMetrics } from '@/lib/metrics'
 import { formatNumber } from '@/lib/utils'
+import { getCachedComparison, setCachedComparison } from '@/lib/cache'
 
 const anthropic = new Anthropic()
 
@@ -47,7 +48,9 @@ export async function POST(request: NextRequest) {
       return { channel, videos: result.videos, metrics: result.metrics }
     })
 
-    // Generate AI comparison — structured JSON
+    const resolvedIds = results.map(r => r.channel.id)
+
+    // Generate AI comparison — check Redis cache first (24h TTL)
     let aiComparison: {
       whoIsWinning: string
       channelStrengths: Record<string, string>
@@ -58,13 +61,20 @@ export async function POST(request: NextRequest) {
       gapOpportunity: '',
     }
 
-    try {
-      const channelSummaries = results.map((r, i) => {
-        const label = String.fromCharCode(65 + i) // A, B, C
-        return `Channel ${label}: ${r.channel.title} (${formatNumber(r.channel.subscriberCount)} subs, ${formatNumber(r.metrics.avgViews)} avg views, ${r.metrics.avgEngagementRate.toFixed(2)}% engagement, momentum ${r.metrics.momentumScore}/100 [${r.metrics.momentumLabel}], uploads ${r.metrics.uploadFrequency})`
-      }).join('\n')
+    const cached = process.env.UPSTASH_REDIS_REST_URL
+      ? await getCachedComparison(resolvedIds).catch(() => null)
+      : null
 
-      const prompt = `Analyze these YouTube channels competitively.
+    if (cached) {
+      aiComparison = cached
+    } else {
+      try {
+        const channelSummaries = results.map((r, i) => {
+          const label = String.fromCharCode(65 + i) // A, B, C
+          return `Channel ${label}: ${r.channel.title} (${formatNumber(r.channel.subscriberCount)} subs, ${formatNumber(r.metrics.avgViews)} avg views, ${r.metrics.avgEngagementRate.toFixed(2)}% engagement, momentum ${r.metrics.momentumScore}/100 [${r.metrics.momentumLabel}], uploads ${r.metrics.uploadFrequency})`
+        }).join('\n')
+
+        const prompt = `Analyze these YouTube channels competitively.
 
 ${channelSummaries}
 
@@ -80,24 +90,30 @@ Respond with ONLY valid JSON in this exact format:
 
 No markdown, no code blocks, just the JSON object.`
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 512,
-        messages: [{ role: 'user', content: prompt }],
-      })
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 512,
+          messages: [{ role: 'user', content: prompt }],
+        })
 
-      if (response.content[0].type === 'text') {
-        let rawText = response.content[0].text.trim()
-        if (rawText.startsWith('```')) {
-          rawText = rawText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+        if (response.content[0].type === 'text') {
+          let rawText = response.content[0].text.trim()
+          if (rawText.startsWith('```')) {
+            rawText = rawText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+          }
+          aiComparison = JSON.parse(rawText)
+
+          // Cache for 24 hours — fire-and-forget
+          if (process.env.UPSTASH_REDIS_REST_URL) {
+            setCachedComparison(resolvedIds, aiComparison).catch(() => {})
+          }
         }
-        aiComparison = JSON.parse(rawText)
-      }
-    } catch {
-      aiComparison = {
-        whoIsWinning: 'AI comparison unavailable.',
-        channelStrengths: {},
-        gapOpportunity: '',
+      } catch {
+        aiComparison = {
+          whoIsWinning: 'AI comparison unavailable.',
+          channelStrengths: {},
+          gapOpportunity: '',
+        }
       }
     }
 

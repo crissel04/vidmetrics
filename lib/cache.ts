@@ -21,3 +21,27 @@ export async function getCachedInsights(channelId: string): Promise<AIInsights |
 export async function setCachedInsights(channelId: string, insights: AIInsights) {
   return redis.setex(`insights:${channelId}`, 86400, insights)
 }
+
+interface AIComparison {
+  whoIsWinning: string
+  channelStrengths: Record<string, string>
+  gapOpportunity: string
+}
+
+/**
+ * Retrieves cached AI comparison from Upstash Redis.
+ * Key is derived from sorted channel IDs so order doesn't matter.
+ * Returns null if no cache entry exists.
+ */
+export async function getCachedComparison(channelIds: string[]): Promise<AIComparison | null> {
+  const key = `compare:${[...channelIds].sort().join(',')}`
+  return redis.get<AIComparison>(key)
+}
+
+/**
+ * Stores AI comparison in Upstash Redis with a 24-hour TTL.
+ */
+export async function setCachedComparison(channelIds: string[], comparison: AIComparison) {
+  const key = `compare:${[...channelIds].sort().join(',')}`
+  return redis.setex(key, 86400, comparison)
+}

@@ -65,6 +65,10 @@ const BAR_RADIUS: [number, number, number, number] = [3, 3, 0, 0]
 const BAR_RADIUS_H: [number, number, number, number] = [0, 3, 3, 0]
 const axisTick = { fontSize: 10, fill: 'var(--text-muted)' }
 
+// Module-level cache: persists across component mounts within the same browser session.
+// Keyed by sorted channel IDs so revisiting a comparison tab never re-fires the AI request.
+const aiComparisonSessionCache = new Map<string, AIComparison>()
+
 
 export default function ComparePage() {
   return <ComparePageContent />
@@ -136,11 +140,15 @@ export function ComparePageContent({
     const cachedC = channelCId ? channelCacheRef.current.get(channelCId) : undefined
     if (cachedA && cachedB && (!channelCId || cachedC)) {
       // Build comparison from cached data — show channel data immediately
-      setData({ channelA: cachedA, channelB: cachedB, channelC: cachedC, aiComparison: { whoIsWinning: '', channelStrengths: {}, gapOpportunity: '' } })
+      const sessionAI = aiComparisonSessionCache.get(cacheKey)
+      setData({ channelA: cachedA, channelB: cachedB, channelC: cachedC, aiComparison: sessionAI ?? { whoIsWinning: '', channelStrengths: {}, gapOpportunity: '' } })
       fetchedKeyRef.current = cacheKey
       setLoading(false)
 
-      // Fetch full comparison in background for AI insights
+      // If we already have AI in the session cache, no need to re-fetch
+      if (sessionAI) return
+
+      // Fetch AI insights in background
       setAiLoading(true)
       const bodyData: Record<string, string | number> = {
         channelAUrl: `https://www.youtube.com/channel/${channelAId}`,
@@ -157,6 +165,7 @@ export function ComparePageContent({
         .then(res => res.json())
         .then(json => {
           if (json.aiComparison) {
+            aiComparisonSessionCache.set(cacheKey, json.aiComparison)
             setData(prev => prev ? { ...prev, aiComparison: json.aiComparison } : prev)
           }
         })
@@ -198,6 +207,11 @@ export function ComparePageContent({
         // Set data FIRST, before any side effects that could trigger re-renders
         setData(json)
         fetchedKeyRef.current = cacheKey
+
+        // Cache AI result for this session so tab revisits don't re-fetch
+        if (json.aiComparison) {
+          aiComparisonSessionCache.set(cacheKey, json.aiComparison)
+        }
 
         // Pre-populate channel cache so tab switches are instant
         const results = [json.channelA, json.channelB]
