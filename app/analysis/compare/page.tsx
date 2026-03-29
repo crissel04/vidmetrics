@@ -724,7 +724,7 @@ function UploadFrequencyCard({ channels }: { channels: ChannelData[] }) {
             }}
           />
           {channels.map((_, i) => (
-            <Bar key={i} dataKey={`ch${i}`} fill={CHART_COLORS[i]} radius={[4, 4, 0, 0]} />
+            <Bar key={i} dataKey={`ch${i}`} fill={CHART_COLORS[i]} radius={[10, 10, 0, 0]} />
           ))}
           {channels.map((_, i) => (
             <ReferenceLine
@@ -849,7 +849,7 @@ function PerformanceConsistencyCard({ channels }: { channels: ChannelData[] }) {
                   />
                   <Bar
                     dataKey="views"
-                    radius={[0, 4, 4, 0]}
+                    radius={[0, 10, 10, 0]}
                     fill={CHART_COLORS[ci]}
                     fillOpacity={0.7}
                   />

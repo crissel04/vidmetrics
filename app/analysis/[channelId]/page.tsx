@@ -10,7 +10,7 @@ export default async function AnalysisPage({
   const { channelId } = await params
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-6">
+    <div className="mx-auto w-full max-w-[1280px] px-6 pt-6">
       <Suspense fallback={<DashboardSkeleton />}>
         <AnalysisDashboard channelId={channelId} />
       </Suspense>

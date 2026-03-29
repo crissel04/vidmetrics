@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics, AIInsights } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChannelHeader } from '@/components/channel/ChannelHeader'
@@ -12,21 +12,22 @@ import { DurationVsViews } from '@/components/charts/DurationVsViews'
 import { EngagementVsViews } from '@/components/charts/EngagementVsViews'
 import { UploadFrequencyChart } from '@/components/charts/UploadFrequencyChart'
 import { HeatmapGrid } from '@/components/charts/HeatmapGrid'
-import { TitlePatterns } from '@/components/insights/TitlePatterns'
+import { ContentInsights } from '@/components/insights/ContentInsights'
 import { MomentumScoreWidget } from '@/components/insights/MomentumScore'
 import { AIInsightsPanel } from '@/components/insights/AIInsightsPanel'
 import { ContentGapDetector } from '@/components/insights/ContentGapDetector'
-import { TopTakeaways } from '@/components/insights/TopTakeaways'
 import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
+import { AnalysisSection } from '@/components/analysis/AnalysisSection'
 import { ShareButton } from '@/components/report/ShareButton'
 import { useChannelTabs } from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import { useRecentChannels } from '@/lib/context/RecentChannelsContext'
 import { VideoDeepDive } from '@/components/videos/VideoDeepDive'
-import { Download } from 'lucide-react'
+import { Download, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { exportToCSV } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useWatchlist } from '@/lib/context/WatchlistContext'
@@ -38,6 +39,14 @@ interface ChannelData {
   metrics: ChannelMetrics
 }
 
+function filterVideosByPublishedWindow(videos: Video[], window: 'all' | '30d' | '90d'): Video[] {
+  if (window === 'all') return videos
+  const now = Date.now()
+  const days = window === '30d' ? 30 : 90
+  const cutoff = now - days * 24 * 60 * 60 * 1000
+  return videos.filter(v => new Date(v.publishedAt).getTime() >= cutoff)
+}
+
 export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const channelCache = useChannelCache()
   const [data, setData] = useState<ChannelData | null>(() => channelCache.get(channelId) ?? null)
@@ -47,6 +56,9 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const [aiLoading, setAiLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deepDiveOpen, setDeepDiveOpen] = useState(false)
+  const [videoPerfTab, setVideoPerfTab] = useState('table')
+  const [videoTimeFilter, setVideoTimeFilter] = useState<'all' | '30d' | '90d'>('all')
+  const [videoSearch, setVideoSearch] = useState('')
   const { addTab } = useChannelTabs()
   const { addRecent } = useRecentChannels()
   const { updateLastAnalyzed } = useWatchlist()
@@ -141,6 +153,31 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const videos = data?.videos ?? []
   const metrics = data?.metrics ?? null
 
+  const videosTabAll = useMemo(
+    () => filterVideosByPublishedWindow(videos, videoTimeFilter),
+    [videos, videoTimeFilter]
+  )
+  const videosTabTop = useMemo(
+    () =>
+      filterVideosByPublishedWindow(
+        [...videos]
+          .filter(v => v.performanceTier === 'hot' || v.performanceTier === 'rising')
+          .sort((a, b) => b.viewCount - a.viewCount),
+        videoTimeFilter
+      ),
+    [videos, videoTimeFilter]
+  )
+  const videosTabWeak = useMemo(
+    () =>
+      filterVideosByPublishedWindow(
+        [...videos]
+          .filter(v => v.performanceTier === 'underperforming')
+          .sort((a, b) => a.viewCount - b.viewCount),
+        videoTimeFilter
+      ),
+    [videos, videoTimeFilter]
+  )
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -163,89 +200,89 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const { channel } = data
 
   return (
-    <div className="flex flex-col gap-6 fade-in">
+    <div className="flex flex-col gap-8 fade-in">
       <ChannelHeader
         channel={channel}
         shareButton={<ShareButton channelId={channel.id} />}
       />
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          label="Avg Views / Video"
-          value={metrics.avgViews}
-          trend={metrics.viewsGrowthPct}
-          trendLabel="vs prior"
-        />
-        <MetricCard
-          label="Avg Engagement Rate"
-          value={Math.round(metrics.avgEngagementRate * 100)}
-          format="percent"
-          tooltip="Likes plus comments divided by views, expressed as a percentage. Higher means a more active audience. Industry average is 3\u20134%."
-        />
-        <MetricCard
-          label="Upload Frequency"
-          value={0}
-          format="string"
-          stringValue={metrics.uploadFrequency}
-        />
-        <MetricCard
-          label="Views Last 30d"
-          value={metrics.totalViewsLast30d}
-          trend={metrics.viewsGrowthPct}
-          tooltip="Total views across all videos published or still accumulating views in the last 30 days."
-        />
-      </div>
+      <div className="flex flex-col gap-12">
+        <AnalysisSection title="Overview">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              label="Avg Views / Video"
+              value={metrics.avgViews}
+              trend={metrics.viewsGrowthPct}
+              trendLabel="vs prior"
+            />
+            <MetricCard
+              label="Avg Engagement Rate"
+              value={Math.round(metrics.avgEngagementRate * 100)}
+              format="percent"
+              tooltip="Likes plus comments divided by views, expressed as a percentage. Higher means a more active audience. Industry average is 3\u20134%."
+            />
+            <MetricCard
+              label="Upload Frequency"
+              value={0}
+              format="string"
+              stringValue={metrics.uploadFrequency}
+            />
+            <MetricCard
+              label="Views Last 30d"
+              value={metrics.totalViewsLast30d}
+              trend={metrics.viewsGrowthPct}
+              tooltip="Total views across all videos published or still accumulating views in the last 30 days."
+            />
+          </div>
+        </AnalysisSection>
 
-      {/* Momentum Score — channel-level, unfiltered */}
-      <MomentumScoreWidget
-        metrics={metrics}
-        uploadDayCounts={computeUploadDayCounts(videos)}
-      />
+        <AnalysisSection title="Momentum & benchmarks">
+          <MomentumScoreWidget
+            metrics={metrics}
+            uploadDayCounts={computeUploadDayCounts(videos)}
+          />
+          <NicheBenchmark metrics={metrics} />
+        </AnalysisSection>
 
-      {/* Niche Benchmark — channel-level, unfiltered */}
-      <NicheBenchmark metrics={metrics} />
+        <AnalysisSection title="Performance">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ViewsChart videos={videos} metrics={metrics} />
+            <PerformanceDistribution videos={videos} />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <DurationVsViews videos={videos} />
+            <EngagementVsViews videos={videos} />
+          </div>
+          <UploadFrequencyChart videos={videos} />
+        </AnalysisSection>
 
-      {/* Row 1 — scatter + distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ViewsChart videos={videos} metrics={metrics} />
-        <PerformanceDistribution videos={videos} />
-      </div>
+        <AnalysisSection title="Content insights">
+          <ContentInsights videos={videos} metrics={metrics} />
+        </AnalysisSection>
 
-      {/* Row 2 — duration + engagement scatters */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DurationVsViews videos={videos} />
-        <EngagementVsViews videos={videos} />
-      </div>
+        <AnalysisSection title="Posting schedule">
+          <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
+        </AnalysisSection>
 
-      {/* Row 3 — upload frequency */}
-      <UploadFrequencyChart videos={videos} />
+        <AnalysisSection title="AI insights">
+          <AIInsightsPanel
+            channel={channel}
+            videos={videos}
+            metrics={metrics}
+            onInsightsLoaded={(insights) => {
+              setAiInsights(insights)
+              setAiLoading(false)
+            }}
+          />
+          <ContentGapDetector insights={aiInsights} loading={aiLoading} />
+        </AnalysisSection>
 
-      {/* Row 4 — title patterns */}
-      <TitlePatterns videos={videos} metrics={metrics} />
-
-      {/* Top Takeaways */}
-      <TopTakeaways videos={videos} metrics={metrics} />
-
-      {/* Heatmap */}
-      <HeatmapGrid videos={videos} bestDay={metrics.bestDayOfWeek} bestTime={metrics.bestTimeOfDay} />
-
-      {/* AI Insights — uses all videos for prompt quality */}
-      <AIInsightsPanel
-        channel={channel}
-        videos={videos}
-        metrics={metrics}
-        onInsightsLoaded={(insights) => {
-          setAiInsights(insights)
-          setAiLoading(false)
-        }}
-      />
-
-      {/* Content Gap Detector */}
-      <ContentGapDetector insights={aiInsights} loading={aiLoading} />
-
-      {/* Video Table — tabbed card */}
-      <Card id="videos" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
+        <AnalysisSection title="Video library">
+          <Card
+            id="videos"
+            style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+            className="shadow-none"
+          >
         <CardHeader className="pb-0">
           <div className="flex items-center justify-between">
             <div>
@@ -275,34 +312,74 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           </div>
         </CardHeader>
 
-        <Tabs defaultValue="table" className="w-full">
-          <div className="border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-            <TabsList className="h-10 w-full justify-start bg-transparent p-0 gap-0 rounded-none">
-              <TabsTrigger
-                value="table"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
-              >
-                All videos
-              </TabsTrigger>
-              <TabsTrigger
-                value="top"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
-              >
-                Top performers
-              </TabsTrigger>
-              <TabsTrigger
-                value="weak"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--accent)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:bg-transparent text-[var(--text-muted)] px-5 py-2.5 h-10 text-sm"
-              >
-                Underperforming
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={videoPerfTab} onValueChange={setVideoPerfTab} className="w-full">
+          <div
+            className="flex flex-wrap items-center gap-3 border-b px-4 py-3"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
+              {(['all', '30d', '90d'] as const).map(period => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setVideoTimeFilter(period)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+                  style={{
+                    background: videoTimeFilter === period ? 'var(--accent-subtle)' : 'transparent',
+                    color: videoTimeFilter === period ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  }}
+                >
+                  {period === 'all' ? 'All time' : period === '30d' ? 'Last 30d' : 'Last 90d'}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-[var(--border)]">
+              {(
+                [
+                  { value: 'table', label: 'All videos' },
+                  { value: 'top', label: 'Top performers' },
+                  { value: 'weak', label: 'Underperforming' },
+                ] as const
+              ).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setVideoPerfTab(value)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+                  style={{
+                    background: videoPerfTab === value ? 'var(--accent-subtle)' : 'transparent',
+                    color: videoPerfTab === value ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-w-[200px] flex-1">
+              <Search
+                size={14}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+                style={{ color: 'var(--text-muted)' }}
+              />
+              <Input
+                placeholder="Search videos..."
+                value={videoSearch}
+                onChange={e => setVideoSearch(e.target.value)}
+                className="h-8 pl-9 text-sm"
+                style={{ borderColor: 'var(--border)' }}
+              />
+            </div>
           </div>
 
           <TabsContent value="table" className="mt-0">
             <VideoTable
-              videos={videos}
-              onRowClick={(video) => {
+              videos={videosTabAll}
+              renderToolbar={false}
+              globalFilter={videoSearch}
+              onGlobalFilterChange={setVideoSearch}
+              onRowClick={video => {
                 setSelectedVideo(video)
                 setDeepDiveOpen(true)
               }}
@@ -312,14 +389,14 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           <TabsContent value="top" className="mt-0">
             {videos.filter(v => v.performanceTier === 'hot' || v.performanceTier === 'rising').length > 0 ? (
               <VideoTable
-                videos={[...videos]
-                  .filter(v => v.performanceTier === 'hot' || v.performanceTier === 'rising')
-                  .sort((a, b) => b.viewCount - a.viewCount)}
-                onRowClick={(video) => {
+                videos={videosTabTop}
+                renderToolbar={false}
+                globalFilter={videoSearch}
+                onGlobalFilterChange={setVideoSearch}
+                onRowClick={video => {
                   setSelectedVideo(video)
                   setDeepDiveOpen(true)
                 }}
-                hideFilters
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-[200px] gap-2">
@@ -333,14 +410,14 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           <TabsContent value="weak" className="mt-0">
             {videos.filter(v => v.performanceTier === 'underperforming').length > 0 ? (
               <VideoTable
-                videos={[...videos]
-                  .filter(v => v.performanceTier === 'underperforming')
-                  .sort((a, b) => a.viewCount - b.viewCount)}
-                onRowClick={(video) => {
+                videos={videosTabWeak}
+                renderToolbar={false}
+                globalFilter={videoSearch}
+                onGlobalFilterChange={setVideoSearch}
+                onRowClick={video => {
                   setSelectedVideo(video)
                   setDeepDiveOpen(true)
                 }}
-                hideFilters
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-[200px] gap-2">
@@ -351,9 +428,10 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
             )}
           </TabsContent>
         </Tabs>
-      </Card>
+          </Card>
+        </AnalysisSection>
+      </div>
 
-      {/* Video Deep Dive */}
       <VideoDeepDive
         video={selectedVideo}
         metrics={metrics}
@@ -373,10 +451,13 @@ function computeUploadDayCounts(videos: Video[]): Record<number, number> {
   return counts
 }
 
+function SectionHeadingSkeleton() {
+  return <Skeleton className="h-8 w-48" />
+}
+
 function DashboardLoadingSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      {/* Channel Header */}
+    <div className="flex flex-col gap-8">
       <div>
         <div className="flex items-center gap-4">
           <Skeleton className="h-16 w-16 rounded-full" />
@@ -392,73 +473,144 @@ function DashboardLoadingSkeleton() {
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-20" />
+      <div className="flex flex-col gap-12">
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </section>
 
-      {/* Momentum Score */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-16 w-24" />
-        <Skeleton className="h-4 w-48" />
-      </div>
-
-      {/* Niche Benchmark */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
-        <Skeleton className="h-4 w-40" />
-        <div className="grid grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-          <Skeleton className="h-4 w-32 mb-4" />
-          <Skeleton className="h-[200px] w-full" />
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-          <Skeleton className="h-4 w-32 mb-4" />
-          <Skeleton className="h-[200px] w-full" />
-        </div>
-      </div>
-
-      {/* Heatmap */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <Skeleton className="h-4 w-48 mb-4" />
-        <Skeleton className="h-[180px] w-full" />
-      </div>
-
-      {/* AI Insights */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-4">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-
-      {/* Video Table */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)]">
-        <div className="p-4 border-b border-[var(--border-subtle)]">
-          <Skeleton className="h-8 w-48" />
-        </div>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex gap-4 px-4 py-3 border-b border-[var(--border-subtle)]">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-4 w-16" />
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-16 w-24" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-3">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-3 w-full max-w-xs" />
+                <div className="flex w-full min-w-0 gap-1.5 pt-2">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <Skeleton key={i} className="h-5 min-w-0 flex-1 basis-0 rounded-md" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-40" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5 space-y-3"
+                  >
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-px w-full opacity-40" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <Skeleton className="h-4 w-32 mb-4" />
+                <Skeleton className="h-[200px] w-full" />
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <Skeleton className="h-4 w-32 mb-4" />
+                <Skeleton className="h-[200px] w-full" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <Skeleton className="h-4 w-32 mb-4" />
+                <Skeleton className="h-[200px] w-full" />
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <Skeleton className="h-4 w-32 mb-4" />
+                <Skeleton className="h-[200px] w-full" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+              <Skeleton className="h-4 w-40 mb-4" />
+              <Skeleton className="h-[160px] w-full" />
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="flex flex-col gap-6">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+              <Skeleton className="h-4 w-36 mb-4" />
+              <Skeleton className="h-[140px] w-full" />
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+              <Skeleton className="h-5 w-32 mb-4" />
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+            <Skeleton className="h-4 w-48 mb-4" />
+            <Skeleton className="h-[180px] w-full" />
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="flex flex-col gap-6">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 space-y-4">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6 h-32" />
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-5">
+          <SectionHeadingSkeleton />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)]">
+            <div className="p-4 border-b border-[var(--border-subtle)]">
+              <Skeleton className="h-8 w-48" />
+            </div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4 px-4 py-3 border-b border-[var(--border-subtle)]">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   )
