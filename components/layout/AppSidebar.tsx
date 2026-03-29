@@ -31,7 +31,7 @@ import { useNavSectionBadges } from '@/hooks/useNavSectionBadges'
 
 const navItems = [
   { title: 'Home', icon: House, href: '/', isActive: (p: string) => p === '/' },
-  { title: 'Analysis', icon: BarChart2, href: '/analysis', isActive: (p: string) => p.startsWith('/analysis') },
+  { title: 'Analytics', icon: BarChart2, href: '/analysis', isActive: (p: string) => p.startsWith('/analysis') },
 ]
 
 /** Sidebar menu links with count badges: flex row so the label truncates, not the ping. */

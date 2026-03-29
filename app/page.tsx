@@ -59,21 +59,33 @@ export default function HomePage() {
 
       <div className="relative z-10 flex w-full max-w-3xl flex-col items-center px-6 pt-12 text-center">
         <div className="flex w-full flex-col items-center gap-4">
-          <VidMetricsLogo className="size-11" />
+          <div className="hero-enter" style={{ '--hero-delay': '0ms' } as React.CSSProperties}>
+            <VidMetricsLogo className="size-11" />
+          </div>
 
           <h1
-            className="w-full text-4xl font-semibold tracking-tight sm:text-5xl max-w-2xl"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+            className="hero-enter w-full text-4xl font-semibold tracking-tight sm:text-5xl max-w-2xl"
+            style={{
+              fontFamily: 'var(--font-display)',
+              color: 'var(--text-primary)',
+              '--hero-delay': '80ms',
+            } as React.CSSProperties}
           >
             Know what your competitors are doing on YouTube
           </h1>
 
-          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+          <p
+            className="hero-enter text-lg"
+            style={{ color: 'var(--text-secondary)', '--hero-delay': '160ms' } as React.CSSProperties}
+          >
             Paste any channel URL. Get instant performance intelligence.
           </p>
         </div>
 
-        <div className="mt-9 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-stretch">
+        <div
+          className="hero-enter mt-9 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-stretch"
+          style={{ '--hero-delay': '240ms' } as React.CSSProperties}
+        >
           <div className="relative flex-1">
             <Search
               size={17}
@@ -116,12 +128,20 @@ export default function HomePage() {
         </div>
 
         {error && (
-          <p className="mt-3 text-sm" style={{ color: 'var(--red-text)' }}>
+          <p
+            className="hero-enter mt-3 text-sm"
+            style={{ color: 'var(--red-text)', '--hero-delay': '0ms' } as React.CSSProperties}
+          >
             {error}
           </p>
         )}
 
-        <RecentChannels />
+        <div
+          className="hero-enter"
+          style={{ '--hero-delay': '320ms', width: '100%' } as React.CSSProperties}
+        >
+          <RecentChannels />
+        </div>
       </div>
     </div>
   )

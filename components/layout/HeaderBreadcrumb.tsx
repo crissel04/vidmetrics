@@ -30,7 +30,7 @@ export function HeaderBreadcrumb() {
   } else if (pathname.startsWith('/analysis/')) {
     const channelId = pathname.split('/')[2]
     const cached = channelId ? cache.get(channelId) : undefined
-    label = cached?.channel.title ?? 'Analysis'
+    label = cached?.channel.title ?? 'Analytics'
   }
 
   return (
