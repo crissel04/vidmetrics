@@ -1,21 +1,24 @@
 'use client'
 
 import { Info } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface InfoTooltipProps {
   text: string
+  /** When set, overrides default muted icon color (e.g. on dark or accent backgrounds). */
+  iconClassName?: string
 }
 
-export function InfoTooltip({ text }: InfoTooltipProps) {
+export function InfoTooltip({ text, iconClassName }: InfoTooltipProps) {
   return (
     <Tooltip>
       <TooltipTrigger
         render={
           <Info
             size={13}
-            style={{ color: 'var(--text-muted)' }}
-            className="cursor-help shrink-0"
+            className={cn('cursor-help shrink-0', iconClassName)}
+            style={iconClassName ? undefined : { color: 'var(--text-muted)' }}
           />
         }
       />

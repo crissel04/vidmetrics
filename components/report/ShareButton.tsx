@@ -43,7 +43,7 @@ export function ShareButton({ channelId }: ShareButtonProps) {
       variant="outline"
       size="sm"
       onClick={handleShare}
-      className="gap-1.5"
+      className="gap-1.5 cursor-pointer"
       style={{ borderColor: 'var(--border)' }}
     >
       <Share2 size={14} />
