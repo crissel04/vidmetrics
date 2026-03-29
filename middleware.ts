@@ -31,8 +31,15 @@ function getRatelimits(): { channel: Ratelimit; insights: Ratelimit } | null {
 }
 
 export async function middleware(request: NextRequest) {
-  // Refresh Supabase auth session on every request
-  const response = await updateSession(request)
+  // Refresh Supabase auth session on every request.
+  // Guard with try/catch so missing Supabase env vars don't crash the middleware.
+  let response: NextResponse
+  try {
+    response = await updateSession(request)
+  } catch (err) {
+    console.error('[middleware] Supabase session update failed:', err)
+    response = NextResponse.next({ request })
+  }
 
   // Skip rate limiting in development
   if (process.env.NODE_ENV === 'development') {
