@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { channelAUrl, channelBUrl, channelCUrl } = parsed.data
+    const { channelAUrl, channelBUrl, channelCUrl, maxVideos = 50 } = parsed.data
 
     // Resolve channel IDs in parallel
     const urlsToResolve = [channelAUrl, channelBUrl]
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const channelIds = await Promise.all(urlsToResolve.map(resolveChannelId))
 
     // Fetch all channels in parallel
-    const rawData = await Promise.all(channelIds.map(getCachedChannelData))
+    const rawData = await Promise.all(channelIds.map(id => getCachedChannelData(id, maxVideos)))
 
     const results: ChannelResult[] = rawData.map(d => {
       const result = computeAllMetrics(d.rawVideos, d.channelInfo)

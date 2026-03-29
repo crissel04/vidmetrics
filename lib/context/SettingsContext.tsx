@@ -10,7 +10,7 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  videosToFetch: 200,
+  videosToFetch: 50,
   theme: 'system',
 }
 

@@ -29,4 +29,5 @@ export const compareBodySchema = z.object({
   channelAUrl: z.string().url(),
   channelBUrl: z.string().url(),
   channelCUrl: z.string().url().optional(),
+  maxVideos: z.union([z.literal(50), z.literal(100), z.literal(200)]).optional(),
 })

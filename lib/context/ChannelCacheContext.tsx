@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useRef, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useRef, useCallback, useMemo, type ReactNode } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 
 export interface CachedChannelData {
@@ -32,8 +32,10 @@ export function ChannelCacheProvider({ children }: { children: ReactNode }) {
     return cache.current.has(channelId)
   }, [])
 
+  const value = useMemo(() => ({ get, set, has }), [get, set, has])
+
   return (
-    <ChannelCacheContext.Provider value={{ get, set, has }}>
+    <ChannelCacheContext.Provider value={value}>
       {children}
     </ChannelCacheContext.Provider>
   )

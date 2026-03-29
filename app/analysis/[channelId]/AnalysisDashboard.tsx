@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
 import { AnalysisPageBodySkeleton } from '@/components/analysis/AnalysisPageSkeleton'
 import { ChannelAnalysisView } from '@/components/analysis/ChannelAnalysisView'
@@ -28,14 +28,25 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
   const { updateLastAnalyzed } = useWatchlist()
   const { settings } = useSettings()
 
+  // Stable refs to avoid re-triggering the effect from callback identity changes
+  const channelCacheRef = useRef(channelCache)
+  channelCacheRef.current = channelCache
+  const addTabRef = useRef(addTab)
+  addTabRef.current = addTab
+  const addRecentRef = useRef(addRecent)
+  addRecentRef.current = addRecent
+  const updateLastAnalyzedRef = useRef(updateLastAnalyzed)
+  updateLastAnalyzedRef.current = updateLastAnalyzed
+
   useEffect(() => {
-    if (channelCache.has(channelId)) {
-      const cached = channelCache.get(channelId)!
+    const cache = channelCacheRef.current
+    if (cache.has(channelId)) {
+      const cached = cache.get(channelId)!
       setData(cached)
       setLoading(false)
       setError('')
 
-      addRecent({
+      addRecentRef.current({
         channelId: cached.channel.id,
         title: cached.channel.title,
         handle: cached.channel.handle,
@@ -43,13 +54,13 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
         subscriberCount: cached.channel.subscriberCount,
         analyzedAt: new Date().toISOString(),
       })
-      addTab({
+      addTabRef.current({
         channelId: cached.channel.id,
         title: cached.channel.title,
         handle: cached.channel.handle,
         thumbnailUrl: cached.channel.thumbnailUrl,
       })
-      updateLastAnalyzed(
+      updateLastAnalyzedRef.current(
         cached.channel.id,
         cached.metrics.momentumScore,
         cached.metrics.momentumLabel
@@ -60,12 +71,15 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
     setLoading(true)
     setError('')
 
+    let cancelled = false
     async function fetchData() {
       try {
         const res = await fetch(
           `/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}&maxVideos=${settings.videosToFetch}`
         )
+        if (cancelled) return
         const json = await res.json()
+        if (cancelled) return
 
         if (!res.ok) {
           setError(json.error || 'Failed to load channel data')
@@ -73,11 +87,11 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           return
         }
 
-        channelCache.set(channelId, json)
+        channelCacheRef.current.set(channelId, json)
         setData(json)
         setLoading(false)
 
-        addRecent({
+        addRecentRef.current({
           channelId: json.channel.id,
           title: json.channel.title,
           handle: json.channel.handle,
@@ -86,25 +100,30 @@ export function AnalysisDashboard({ channelId }: { channelId: string }) {
           analyzedAt: new Date().toISOString(),
         })
 
-        addTab({
+        addTabRef.current({
           channelId: json.channel.id,
           title: json.channel.title,
           handle: json.channel.handle,
           thumbnailUrl: json.channel.thumbnailUrl,
         })
 
-        updateLastAnalyzed(
+        updateLastAnalyzedRef.current(
           json.channel.id,
           json.metrics.momentumScore,
           json.metrics.momentumLabel
         )
       } catch {
-        setError('Network error — please try again')
-        setLoading(false)
+        if (!cancelled) {
+          setError('Network error — please try again')
+          setLoading(false)
+        }
       }
     }
     fetchData()
-  }, [channelId, addTab, channelCache, addRecent, updateLastAnalyzed, settings.videosToFetch])
+    return () => { cancelled = true }
+    // Only re-fetch when channelId or videosToFetch changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId, settings.videosToFetch])
 
   const metrics = data?.metrics ?? null
 

@@ -231,7 +231,7 @@ export async function fetchVideoDetails(videoIds: string[]): Promise<RawVideo[]>
  * This function parses them to numbers before returning.
  * likeCount and commentCount may be absent (not just 0) if hidden by the creator.
  */
-export async function fetchFullChannelData(channelId: string, maxVideos = 200) {
+export async function fetchFullChannelData(channelId: string, maxVideos = 50) {
   const channelInfo = await fetchChannelInfo(channelId)
   const videoIds = await fetchVideoIds(channelInfo.uploadsPlaylistId, maxVideos)
   const rawVideos = await fetchVideoDetails(videoIds)
@@ -243,7 +243,7 @@ export async function fetchFullChannelData(channelId: string, maxVideos = 200) {
  * Wraps fetchFullChannelData with Next.js unstable_cache for 1-hour TTL.
  * Cache key includes channelId to keep each channel's data separate.
  */
-export function getCachedChannelData(channelId: string, maxVideos = 200) {
+export function getCachedChannelData(channelId: string, maxVideos = 50) {
   return unstable_cache(
     async () => fetchFullChannelData(channelId, maxVideos),
     [`channel-data-${channelId}-${maxVideos}`],
