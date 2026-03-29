@@ -1,10 +1,10 @@
 import { Suspense } from 'react'
 import { ReportPageContent } from '@/components/report/ReportPageContent'
-import { ReportSkeleton } from '@/components/report/ReportSkeleton'
+import { ReportLandingSkeleton } from '@/components/report/ReportLandingSkeleton'
 
 export default function ReportPage() {
   return (
-    <Suspense fallback={<ReportSkeleton />}>
+    <Suspense fallback={<ReportLandingSkeleton />}>
       <ReportPageContent />
     </Suspense>
   )

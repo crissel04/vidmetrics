@@ -92,7 +92,7 @@ export function InsightTimelineRailed({
         )}
         style={{
           bottom: '0px',
-          background: 'var(--border-subtle)',
+          background: 'var(--insight-timeline-rail)',
         }}
         aria-hidden
       />

@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, RefreshCw, GitCompare, Trash2, Plus, Tag, X } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { Bookmark, GitCompare, Trash2, Tag, X, ArrowRight, LayoutGrid, List } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +14,7 @@ import AuthModal from '@/components/auth/AuthModal'
 import { formatNumber } from '@/lib/utils'
 
 export default function WatchlistPage() {
-  const { watchlist, removeFromWatchlist, addTag, removeTag, getAllTags } = useWatchlist()
+  const { watchlist, removeFromWatchlist, addTag, removeTag } = useWatchlist()
   const { addTab } = useChannelTabs()
   const { user } = useAuth()
   const router = useRouter()
@@ -24,10 +23,29 @@ export default function WatchlistPage() {
   const [newTag, setNewTag] = useState('')
   const [addingTagFor, setAddingTagFor] = useState<string | null>(null)
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
 
-  const allTags = getAllTags()
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+  const getDisplayTags = (entry: WatchlistEntry) => {
+    const tags = [...entry.tags]
+    const cat = entry.category ? capitalize(entry.category) : ''
+    if (cat && !tags.includes(cat)) {
+      tags.unshift(cat)
+    }
+    return tags
+  }
+
+  const allDisplayTags = (() => {
+    const tagSet = new Set<string>()
+    watchlist.forEach(entry => {
+      getDisplayTags(entry).forEach(t => tagSet.add(t))
+    })
+    return Array.from(tagSet)
+  })()
+
   const filteredWatchlist = activeTag
-    ? watchlist.filter(entry => entry.tags.includes(activeTag))
+    ? watchlist.filter(entry => getDisplayTags(entry).includes(activeTag))
     : watchlist
 
   const toggleSelect = (channelId: string) => {
@@ -76,29 +94,32 @@ export default function WatchlistPage() {
         >
           <Bookmark size={24} style={{ color: 'var(--text-muted)' }} />
         </div>
-        <div className="space-y-1">
-          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
+        <div className="space-y-1.5">
+          <h2
+            className="text-xl font-semibold"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
             Your watchlist is empty
-          </p>
+          </h2>
           <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
             Analyze a channel and click Save to add it here.
             Use the watchlist to track competitors you check regularly.
           </p>
         </div>
         <Button
-          variant="outline"
           onClick={() => router.push('/')}
-          style={{ borderColor: 'var(--border)' }}
+          className="mt-2 h-10 cursor-pointer gap-1.5 px-4 text-sm font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+          style={{ background: 'var(--accent)', color: '#ffffff' }}
         >
-          <Plus size={14} className="mr-1.5" />
           Analyze a channel
+          <ArrowRight size={14} className="shrink-0" aria-hidden />
         </Button>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 pt-2 fade-in">
       {!user && (
         <>
           <div
@@ -126,36 +147,58 @@ export default function WatchlistPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1
-            className="font-semibold text-xl"
+            className="font-semibold text-2xl"
             style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
           >
             Watchlist
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            {watchlist.length} saved channel{watchlist.length !== 1 ? 's' : ''}
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {watchlist.length} saved channel{watchlist.length !== 1 ? 's' : ''} — select 2–3 to compare
           </p>
         </div>
 
-        {selected.size >= 2 && (
-          <Button
-            onClick={handleCompareSelected}
-            className="gap-2"
-            style={{ background: 'var(--accent)', color: '#ffffff' }}
+        <div className="flex items-center gap-2 shrink-0">
+          {selected.size >= 2 && (
+            <Button
+              onClick={handleCompareSelected}
+              className="cursor-pointer gap-1.5 px-4 text-sm font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+              style={{ background: 'var(--accent)', color: '#ffffff' }}
+            >
+              <GitCompare size={14} />
+              Compare {selected.size}
+              <ArrowRight size={14} className="shrink-0" aria-hidden />
+            </Button>
+          )}
+          <div
+            className="flex items-center rounded-lg border p-0.5"
+            style={{ borderColor: 'var(--border)' }}
           >
-            <GitCompare size={14} />
-            Compare {selected.size} channels
-          </Button>
-        )}
+            <button
+              onClick={() => setViewMode('card')}
+              className="rounded-md p-1.5 transition-colors"
+              style={{
+                background: viewMode === 'card' ? 'var(--bg-app)' : 'transparent',
+                color: viewMode === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
+              }}
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className="rounded-md p-1.5 transition-colors"
+              style={{
+                background: viewMode === 'list' ? 'var(--bg-app)' : 'transparent',
+                color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-muted)',
+              }}
+            >
+              <List size={15} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {watchlist.length >= 2 && selected.size === 0 && (
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Select 2 or 3 channels to compare them side by side
-        </p>
-      )}
-
       {/* Tag filter bar */}
-      {allTags.length > 0 && (
+      {allDisplayTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTag(null)}
@@ -168,8 +211,8 @@ export default function WatchlistPage() {
           >
             All ({watchlist.length})
           </button>
-          {allTags.map(tag => {
-            const count = watchlist.filter(e => e.tags.includes(tag)).length
+          {allDisplayTags.map(tag => {
+            const count = watchlist.filter(e => getDisplayTags(e).includes(tag)).length
             return (
               <button
                 key={tag}
@@ -188,37 +231,108 @@ export default function WatchlistPage() {
         </div>
       )}
 
-      {/* Channel grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Channel grid / list */}
+      <div className={viewMode === 'card' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
         {filteredWatchlist.map(entry => {
           const isSelected = selected.has(entry.channelId)
-          const momentumColor =
-            entry.lastMomentumLabel === 'Accelerating' ? 'var(--green-text)' :
-            entry.lastMomentumLabel === 'Stable' ? 'var(--accent-text)' :
-            entry.lastMomentumLabel === 'Slowing' ? 'var(--amber-text)' :
-            entry.lastMomentumLabel === 'Dormant' ? 'var(--red-text)' :
-            'var(--text-muted)'
+          const displayTags = getDisplayTags(entry)
+
+          if (viewMode === 'list') {
+            return (
+              <Card
+                key={entry.channelId}
+                className="cursor-pointer transition-colors shadow-none"
+                style={{
+                  borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                  background: 'var(--bg-card)',
+                  ...(isSelected ? { outline: '2px solid var(--accent)', outlineOffset: '-2px' } : {}),
+                }}
+                onClick={() => toggleSelect(entry.channelId)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <Checkbox
+                      checked={isSelected}
+                      className="shrink-0 pointer-events-none"
+                    />
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage src={entry.thumbnailUrl} alt={entry.channelTitle} />
+                      <AvatarFallback
+                        style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
+                      >
+                        {entry.channelTitle.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                        {entry.channelTitle}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                        {entry.handle}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium tabular-nums shrink-0" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                      {formatNumber(entry.subscriberCount)}
+                    </p>
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        onClick={() => handleAnalyze(entry)}
+                        className="cursor-pointer gap-1.5 px-3 text-xs font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)]"
+                        style={{ background: 'var(--accent)', color: '#ffffff' }}
+                        size="sm"
+                      >
+                        Analyze
+                        <ArrowRight size={12} className="shrink-0" aria-hidden />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => removeFromWatchlist(entry.channelId)}
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          }
+
+          const gridLine = 'color-mix(in srgb, var(--border-strong) 32%, transparent)'
 
           return (
             <Card
               key={entry.channelId}
-              className="cursor-pointer transition-colors"
+              className="relative cursor-pointer overflow-hidden transition-colors shadow-none"
               style={{
                 borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
                 background: 'var(--bg-card)',
-                ...(isSelected ? { boxShadow: 'none', outline: '2px solid var(--accent)', outlineOffset: '-2px' } : {}),
+                ...(isSelected ? { outline: '2px solid var(--accent)', outlineOffset: '-2px' } : {}),
               }}
               onClick={() => toggleSelect(entry.channelId)}
             >
-              <CardContent className="p-4 space-y-4">
-                {/* Top row: checkbox + avatar + name */}
+              {/* Grid lines */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-[inherit]"
+                aria-hidden
+                style={{
+                  backgroundImage: `
+                    linear-gradient(to right, ${gridLine} 1px, transparent 1px),
+                    linear-gradient(to bottom, ${gridLine} 1px, transparent 1px)
+                  `,
+                  backgroundSize: '24px 24px',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent, black)',
+                  maskImage: 'linear-gradient(to bottom, transparent, black)',
+                }}
+              />
+              <CardContent className="relative z-[1] flex h-full flex-col p-4 space-y-3">
+                {/* Top row: checkbox + avatar + name + delete */}
                 <div className="flex items-start gap-3">
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => toggleSelect(entry.channelId)}
-                    onClick={(e) => e.stopPropagation()}
-                    disabled={!isSelected && selected.size >= 3}
-                    className="mt-1 shrink-0"
+                    className="mt-1 shrink-0 pointer-events-none"
                   />
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={entry.thumbnailUrl} alt={entry.channelTitle} />
@@ -228,7 +342,7 @@ export default function WatchlistPage() {
                       {entry.channelTitle.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0">
+                  <div className="flex-1 min-w-0">
                     <p
                       className="font-medium truncate text-sm"
                       style={{ color: 'var(--text-primary)' }}
@@ -239,56 +353,49 @@ export default function WatchlistPage() {
                       {entry.handle}
                     </p>
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFromWatchlist(entry.channelId) }}
+                    className="shrink-0 p-1 rounded transition-colors duration-150"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red-text)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
 
-                {/* Stats row */}
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Subscribers</p>
-                    <p
-                      className="text-sm font-medium tabular-nums"
-                      style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
-                    >
-                      {formatNumber(entry.subscriberCount)}
-                    </p>
-                  </div>
-                  {entry.lastMomentumScore !== undefined && (
-                    <div className="text-right space-y-0.5">
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Momentum</p>
-                      <p
-                        className="text-sm font-medium tabular-nums"
-                        style={{ fontFamily: 'var(--font-display)', color: momentumColor }}
-                      >
-                        {entry.lastMomentumScore} · {entry.lastMomentumLabel}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Last analyzed */}
-                {entry.lastAnalyzedAt && (
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Analyzed {formatDistanceToNow(new Date(entry.lastAnalyzedAt), { addSuffix: true })}
-                  </p>
-                )}
+                {/* Subscriber count */}
+                <p
+                  className="text-lg font-bold tabular-nums"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+                >
+                  {formatNumber(entry.subscriberCount)}
+                  <span className="ml-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>subscribers</span>
+                </p>
 
                 {/* Tags */}
                 <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  {entry.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                      style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
-                    >
-                      {tag}
-                      <button
-                        onClick={() => removeTag(entry.channelId, tag)}
-                        className="hover:opacity-70"
+                  {displayTags.map(tag => {
+                    const catCapitalized = entry.category ? capitalize(entry.category) : ''
+                    const isCategoryTag = tag === catCapitalized && !entry.tags.includes(tag)
+                    return (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                        style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
                       >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
+                        {tag}
+                        {!isCategoryTag && (
+                          <button
+                            onClick={() => removeTag(entry.channelId, tag)}
+                            className="hover:opacity-70"
+                          >
+                            <X size={10} />
+                          </button>
+                        )}
+                      </span>
+                    )
+                  })}
                   {addingTagFor === entry.channelId ? (
                     <input
                       autoFocus
@@ -329,25 +436,19 @@ export default function WatchlistPage() {
                   )}
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                {/* Spacer pushes analyze button to bottom */}
+                <div className="flex-1" />
+
+                {/* Analyze button — always at bottom */}
+                <div className="pt-1" onClick={(e) => e.stopPropagation()}>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-1.5 text-xs"
                     onClick={() => handleAnalyze(entry)}
-                    style={{ borderColor: 'var(--border)' }}
-                  >
-                    <RefreshCw size={12} />
-                    Analyze
-                  </Button>
-                  <Button
-                    variant="ghost"
+                    className="w-full cursor-pointer gap-1.5 text-sm font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+                    style={{ background: 'var(--accent)', color: '#ffffff' }}
                     size="sm"
-                    onClick={() => removeFromWatchlist(entry.channelId)}
-                    style={{ color: 'var(--text-muted)' }}
                   >
-                    <Trash2 size={12} />
+                    Analyze
+                    <ArrowRight size={14} className="shrink-0" aria-hidden />
                   </Button>
                 </div>
               </CardContent>

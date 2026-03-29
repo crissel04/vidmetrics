@@ -3,28 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { FileText, Trash2, ExternalLink } from 'lucide-react'
+import { FileText, Trash2, ExternalLink, ArrowRight, LayoutGrid, List } from 'lucide-react'
 import { useAuth } from '@/lib/context/AuthContext'
 import AuthModal from '@/components/auth/AuthModal'
 import { formatDistanceToNow } from 'date-fns'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { formatNumber, formatDate } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 import { useReportsHistory, type ReportEntry } from '@/lib/context/ReportsHistoryContext'
+import { useSettings } from '@/lib/context/SettingsContext'
 import type { ChannelInfo, Video, ChannelMetrics } from '@/lib/types'
-import { ViewsChart } from '@/components/charts/ViewsChart'
-import { EngagementChart } from '@/components/charts/EngagementChart'
-import { NicheBenchmark } from '@/components/insights/NicheBenchmark'
-import { TopTakeaways } from '@/components/insights/TopTakeaways'
-import { ReportSkeleton } from '@/components/report/ReportSkeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { ChannelAnalysisView } from '@/components/analysis/ChannelAnalysisView'
+import { AnalysisPageBodySkeleton } from '@/components/analysis/AnalysisPageSkeleton'
+import { ChannelHeaderSkeleton } from '@/components/channel/ChannelHeaderSkeleton'
+import { ShareButton } from '@/components/report/ShareButton'
 
 interface ChannelData {
   channel: ChannelInfo
@@ -49,27 +41,35 @@ function ReportLandingPage() {
   const { reports, removeReport } = useReportsHistory()
   const { user } = useAuth()
   const [authOpen, setAuthOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
 
   if (reports.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center fade-in">
-        <FileText size={48} style={{ color: 'var(--text-muted)' }} />
-        <h2
-          className="text-lg font-semibold"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--bg-app)' }}
         >
-          No reports yet
-        </h2>
-        <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
-          Analyze a channel and click Share to create a shareable report link. It will appear here.
-        </p>
+          <FileText size={24} style={{ color: 'var(--text-muted)' }} />
+        </div>
+        <div className="space-y-1.5">
+          <h2
+            className="text-xl font-semibold"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
+            No reports yet
+          </h2>
+          <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
+            Analyze a channel and click Share to create a shareable report link. It will appear here.
+          </p>
+        </div>
         <Link href="/">
           <Button
-            variant="outline"
-            size="sm"
-            style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}
+            className="mt-2 h-10 cursor-pointer gap-1.5 px-4 text-sm font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+            style={{ background: 'var(--accent)', color: '#ffffff' }}
           >
             Analyze a channel
+            <ArrowRight size={14} className="shrink-0" aria-hidden />
           </Button>
         </Link>
       </div>
@@ -77,11 +77,11 @@ function ReportLandingPage() {
   }
 
   return (
-    <div className="fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 pt-2 fade-in">
       {!user && (
         <>
           <div
-            className="flex items-center justify-between p-3 rounded-lg border mb-4"
+            className="flex items-center justify-between p-3 rounded-lg border"
             style={{ background: 'var(--accent-subtle)', borderColor: 'var(--accent)' }}
           >
             <p className="text-sm" style={{ color: 'var(--accent-text)' }}>
@@ -101,20 +101,49 @@ function ReportLandingPage() {
         </>
       )}
 
-      <div className="mb-6">
-        <h2
-          className="text-lg font-semibold"
-          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1
+            className="font-semibold text-2xl"
+            style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+          >
+            Reports
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {reports.length} shared report{reports.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        <div
+          className="flex items-center rounded-lg border p-0.5"
+          style={{ borderColor: 'var(--border)' }}
         >
-          Your reports
-        </h2>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Click any report to view it. Share the link to send it to anyone.
-        </p>
+          <button
+            onClick={() => setViewMode('card')}
+            className="rounded-md p-1.5 transition-colors"
+            style={{
+              background: viewMode === 'card' ? 'var(--bg-app)' : 'transparent',
+              color: viewMode === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className="rounded-md p-1.5 transition-colors"
+            style={{
+              background: viewMode === 'list' ? 'var(--bg-app)' : 'transparent',
+              color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
+          >
+            <List size={15} />
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <div className={viewMode === 'card' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
         {reports.map((report) => (
-          <ReportCard key={report.channelId} report={report} onRemove={removeReport} />
+          <ReportCard key={report.channelId} report={report} onRemove={removeReport} viewMode={viewMode} />
         ))}
       </div>
     </div>
@@ -124,61 +153,137 @@ function ReportLandingPage() {
 function ReportCard({
   report,
   onRemove,
+  viewMode = 'card',
 }: {
   report: ReportEntry
   onRemove: (channelId: string) => void
+  viewMode?: 'card' | 'list'
 }) {
   const timeAgo = formatDistanceToNow(new Date(report.sharedAt), { addSuffix: true })
 
-  return (
-    <Link
-      href={`/report?channelId=${report.channelId}`}
-      className="block rounded-xl border bg-[var(--bg-card)] p-4 transition-colors duration-150 hover:bg-[var(--bg-app)]"
-      style={{ borderColor: 'var(--border)' }}
-    >
-      <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10 shrink-0">
-          <AvatarImage src={report.thumbnailUrl} alt={report.channelTitle} />
-          <AvatarFallback
-            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
-          >
-            {report.channelTitle.slice(0, 2).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-            {report.channelTitle}
-          </p>
-          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-            {report.handle} · {formatNumber(report.subscriberCount)} subs
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Shared {timeAgo}
-        </p>
-        <div className="flex items-center gap-1.5">
+  if (viewMode === 'list') {
+    return (
+      <Link
+        href={`/report?channelId=${report.channelId}`}
+        className="block rounded-xl border bg-[var(--bg-card)] p-4 transition-colors duration-150 hover:bg-[var(--bg-app)]"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <div className="flex items-center gap-4">
+          <Avatar className="h-9 w-9 shrink-0">
+            <AvatarImage src={report.thumbnailUrl} alt={report.channelTitle} />
+            <AvatarFallback
+              style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
+            >
+              {report.channelTitle.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+              {report.channelTitle}
+            </p>
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+              {report.handle} · {formatNumber(report.subscriberCount)} subs
+            </p>
+          </div>
+          <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
+            Shared {timeAgo}
+          </span>
           <span
-            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded"
-            style={{ color: 'var(--accent-text)' }}
+            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)]"
+            style={{ background: 'var(--accent)', color: '#ffffff' }}
           >
             View report
-            <ExternalLink size={11} />
+            <ArrowRight size={12} className="shrink-0" aria-hidden />
           </span>
           <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onRemove(report.channelId)
-            }}
-            className="p-1 rounded transition-colors duration-150"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(report.channelId) }}
+            className="p-1 rounded transition-colors duration-150 shrink-0"
             style={{ color: 'var(--text-muted)' }}
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red-text)' }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
           >
             <Trash2 size={13} />
           </button>
+        </div>
+      </Link>
+    )
+  }
+
+  const gridLine = 'color-mix(in srgb, var(--border-strong) 32%, transparent)'
+
+  return (
+    <Link
+      href={`/report?channelId=${report.channelId}`}
+      className="relative block overflow-hidden rounded-xl border bg-[var(--bg-card)] transition-colors duration-150 hover:bg-[var(--bg-app)]"
+      style={{ borderColor: 'var(--border)' }}
+    >
+      {/* Grid lines */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-[inherit]"
+        aria-hidden
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, ${gridLine} 1px, transparent 1px),
+            linear-gradient(to bottom, ${gridLine} 1px, transparent 1px)
+          `,
+          backgroundSize: '24px 24px',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, black)',
+          maskImage: 'linear-gradient(to bottom, transparent, black)',
+        }}
+      />
+      <div className="relative z-[1] flex flex-col p-4 space-y-3">
+        {/* Top row: avatar + name + delete */}
+        <div className="flex items-start gap-3">
+          <Avatar className="h-10 w-10 shrink-0">
+            <AvatarImage src={report.thumbnailUrl} alt={report.channelTitle} />
+            <AvatarFallback
+              style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)', fontSize: '11px' }}
+            >
+              {report.channelTitle.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+              {report.channelTitle}
+            </p>
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+              {report.handle}
+            </p>
+          </div>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(report.channelId) }}
+            className="shrink-0 p-1 rounded transition-colors duration-150"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--red-text)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        {/* Subscriber count */}
+        <p
+          className="text-lg font-bold tabular-nums"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
+        >
+          {formatNumber(report.subscriberCount)}
+          <span className="ml-1.5 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>subscribers</span>
+        </p>
+
+        {/* Shared time */}
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Shared {timeAgo}
+        </p>
+
+        {/* View report button */}
+        <div className="pt-1">
+          <span
+            className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-1px_0_rgba(0,0,0,0.2)] transition-shadow duration-300 ease-out hover:shadow-[inset_0_2px_14px_rgba(255,255,255,0.18),inset_0_-3px_16px_rgba(0,0,0,0.22)]"
+            style={{ background: 'var(--accent)', color: '#ffffff' }}
+          >
+            View report
+            <ArrowRight size={14} className="shrink-0" aria-hidden />
+          </span>
         </div>
       </div>
     </Link>
@@ -188,12 +293,15 @@ function ReportCard({
 /* ─── Report fetcher: loads and renders a single report ─── */
 
 function ReportFetcher({ channelId }: { channelId: string }) {
+  const { settings } = useSettings()
   const [data, setData] = useState<ChannelData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}`)
+    fetch(
+      `/api/channel?url=${encodeURIComponent(`https://www.youtube.com/channel/${channelId}`)}&maxVideos=${settings.videosToFetch}`
+    )
       .then(async (res) => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
@@ -216,9 +324,16 @@ function ReportFetcher({ channelId }: { channelId: string }) {
         setError(err.message ?? 'Could not load this report.')
       })
       .finally(() => setLoading(false))
-  }, [channelId])
+  }, [channelId, settings.videosToFetch])
 
-  if (loading) return <ReportSkeleton />
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-8" aria-busy="true">
+        <ChannelHeaderSkeleton />
+        <AnalysisPageBodySkeleton />
+      </div>
+    )
+  }
 
   if (error) {
     return (
@@ -241,94 +356,11 @@ function ReportFetcher({ channelId }: { channelId: string }) {
   const { channel, videos, metrics } = data
 
   return (
-    <div className="flex flex-col gap-6 fade-in">
-      {/* Report header */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <div className="flex items-center gap-2">
-          <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-            VidMetrics Report
-          </p>
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-            style={{ background: 'var(--accent-subtle)', color: 'var(--accent-text)' }}
-          >
-            Live data
-          </span>
-        </div>
-        <h1
-          className="text-2xl font-bold mt-2"
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          {channel.title}
-        </h1>
-        {channel.handle && (
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            {channel.handle}
-          </p>
-        )}
-      </div>
-
-      {/* Key metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Subscribers', value: formatNumber(channel.subscriberCount) },
-          { label: 'Avg Views', value: formatNumber(metrics.avgViews) },
-          { label: 'Engagement', value: `${metrics.avgEngagementRate.toFixed(2)}%` },
-          { label: 'Momentum', value: `${metrics.momentumScore}/100` },
-        ].map((m) => (
-          <div key={m.label} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{m.label}</p>
-            <p className="text-xl font-bold tabular-nums mt-1" style={{ fontFamily: 'var(--font-display)' }}>
-              {m.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <NicheBenchmark metrics={metrics} />
-      <TopTakeaways videos={videos} metrics={metrics} />
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ViewsChart videos={videos} metrics={metrics} />
-        <EngagementChart videos={videos} avgEngagementRate={metrics.avgEngagementRate} />
-      </div>
-
-      {/* Video table — read-only */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
-        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-          Videos ({videos.length})
-        </h2>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-                <TableHead className="text-right">Likes</TableHead>
-                <TableHead className="text-right">Comments</TableHead>
-                <TableHead className="text-right">Published</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {videos.map((v) => (
-                <TableRow key={v.id}>
-                  <TableCell className="max-w-[300px] truncate font-medium">{v.title}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatNumber(v.viewCount)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatNumber(v.likeCount)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatNumber(v.commentCount)}</TableCell>
-                  <TableCell className="text-right">{formatDate(v.publishedAt)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <p className="text-center text-xs py-4" style={{ color: 'var(--text-muted)' }}>
-        Powered by VidMetrics
-      </p>
-    </div>
+    <ChannelAnalysisView
+      channel={channel}
+      videos={videos}
+      metrics={metrics}
+      shareButton={<ShareButton channelId={channel.id} />}
+    />
   )
 }

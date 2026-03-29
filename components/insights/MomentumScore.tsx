@@ -59,11 +59,11 @@ export function MomentumScoreWidget({ metrics, sparklineData, uploadDayCounts }:
             </div>
             <div className="flex items-end gap-3 mt-2">
               <span
-                className="text-5xl font-bold tabular-nums text-white"
+                className="text-5xl font-bold tabular-nums"
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontVariantNumeric: 'tabular-nums',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                 }}
               >
                 {mounted ? animatedScore : metrics.momentumScore}
@@ -109,7 +109,7 @@ export function MomentumScoreWidget({ metrics, sparklineData, uploadDayCounts }:
             </p>
             <InfoTooltip text={uploadConsistencyTooltip} />
           </div>
-          <p className="text-lg font-semibold leading-snug" style={{ color: '#ffffff' }}>
+          <p className="text-lg font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
             {metrics.uploadConsistency.label}
           </p>
         </div>

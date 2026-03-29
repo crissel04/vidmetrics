@@ -60,6 +60,10 @@
   --border: #e4e4ed;
   --border-subtle: #f0f0f6;
   --border-strong: #d0d0e0;
+  /* Vertical timeline rail (content gaps, takeaways) — stronger than --border-subtle for contrast on white cards */
+  --insight-timeline-rail: var(--border);
+  /* Skeleton blocks on --bg-app (e.g. channel header row). --muted equals --bg-app in light, so default Skeleton is invisible there. */
+  --skeleton-on-canvas: color-mix(in srgb, var(--border-strong) 48%, var(--bg-app));
 
   /* Text */
   --text-primary: #0f0f1a;
@@ -146,6 +150,8 @@
   --border: #2a2a3a;
   --border-subtle: #1e1e2a;
   --border-strong: #3a3a4a;
+  --insight-timeline-rail: var(--border-subtle);
+  --skeleton-on-canvas: color-mix(in srgb, var(--border) 55%, var(--bg-app));
   --text-primary: #f0f0f8;
   --text-secondary: #8888aa;
   --text-muted: #55556a;

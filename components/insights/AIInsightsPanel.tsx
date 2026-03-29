@@ -215,7 +215,7 @@ export function AIInsightsPanel({ channel, videos, metrics, onInsightsLoaded }: 
                         {value}
                       </p>
                     ) : (
-                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-[4.5rem] w-full rounded-md" />
                     )}
                   </CardContent>
                 </Card>
