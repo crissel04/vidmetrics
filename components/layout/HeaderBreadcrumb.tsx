@@ -16,8 +16,16 @@ export function HeaderBreadcrumb() {
   let label = 'Home'
 
   if (pathname === '/report') {
-    label = 'Report'
+    label = 'Reports'
+  } else if (pathname === '/watchlist') {
+    label = 'Watchlist'
+  } else if (pathname === '/comparisons') {
+    label = 'Comparisons'
+  } else if (pathname === '/settings') {
+    label = 'Settings'
   } else if (pathname === '/analysis/compare') {
+    label = 'Compare'
+  } else if (pathname.startsWith('/analysis/compare/')) {
     label = 'Compare'
   } else if (pathname.startsWith('/analysis/')) {
     const channelId = pathname.split('/')[2]

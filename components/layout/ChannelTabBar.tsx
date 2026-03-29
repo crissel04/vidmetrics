@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { X, Plus, GitCompare, Loader2, ArrowUp } from 'lucide-react'
@@ -8,7 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useChannelTabs, type ChannelTab } from '@/lib/hooks/useChannelTabs'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  useChannelTabs,
+  type ChannelTab,
+  type ComparisonTab,
+  type Tab,
+} from '@/lib/hooks/useChannelTabs'
 import { useChannelCache } from '@/lib/context/ChannelCacheContext'
 import {
   DndContext,
@@ -31,7 +37,7 @@ import {
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
 
 export function ChannelTabBar() {
-  const { tabs, addTab, removeTab, reorderTabs } = useChannelTabs()
+  const { tabs, channelTabs, addTab, addComparisonTab, removeTab, reorderTabs } = useChannelTabs()
   const pathname = usePathname()
   const router = useRouter()
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -53,31 +59,64 @@ export function ChannelTabBar() {
     setActiveId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = tabs.findIndex(t => t.channelId === active.id)
-    const newIndex = tabs.findIndex(t => t.channelId === over.id)
+    const oldIndex = tabs.findIndex(t => t.id === active.id)
+    const newIndex = tabs.findIndex(t => t.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
     reorderTabs(arrayMove(tabs, oldIndex, newIndex))
   }
 
-  const handleRemove = (channelId: string) => {
-    const isActive = pathname === `/analysis/${channelId}`
-    removeTab(channelId)
+  const handleRemove = (id: string) => {
+    const tab = tabs.find(t => t.id === id)
+    if (!tab) return
+
+    const isActive = tab.type === 'channel'
+      ? pathname === `/analysis/${tab.channelId}`
+      : pathname === `/analysis/compare/${tab.id}`
+
+    removeTab(id)
 
     if (isActive) {
-      const remaining = tabs.filter((t) => t.channelId !== channelId)
+      const remaining = tabs.filter(t => t.id !== id)
       if (remaining.length > 0) {
-        router.push(`/analysis/${remaining[0].channelId}`)
+        const first = remaining[0]
+        if (first.type === 'channel') {
+          router.push(`/analysis/${first.channelId}`)
+        } else {
+          router.push(`/analysis/compare/${first.id}`)
+        }
       } else {
         router.push('/')
       }
     }
   }
 
-  const activeTab = activeId ? tabs.find(t => t.channelId === activeId) : null
+  const handleNewComparison = () => {
+    const id = crypto.randomUUID()
+    addComparisonTab({
+      id,
+      name: 'New comparison',
+      channels: [],
+    })
+    router.push(`/analysis/compare/${id}`)
+  }
+
+  const activeTab = activeId ? tabs.find(t => t.id === activeId) : null
+
+  const pendingChannelId = useMemo(() => {
+    if (!pathname) return null
+    const m = pathname.match(/^\/analysis\/([^/]+)$/)
+    if (!m) return null
+    const id = m[1]
+    if (id === 'compare') return null
+    return id
+  }, [pathname])
+
+  const showPendingChannelTab =
+    pendingChannelId != null && !tabs.some(t => t.type === 'channel' && t.channelId === pendingChannelId)
 
   return (
     <div
-      className="flex h-full min-h-0 w-full min-w-0 items-stretch gap-0 overflow-x-auto p-0 m-0"
+      className="flex h-full min-h-[40px] w-full min-w-0 items-stretch gap-0 overflow-x-auto p-0 m-0"
       style={{ scrollbarWidth: 'none' }}
     >
       <DndContext
@@ -88,58 +127,63 @@ export function ChannelTabBar() {
         onDragCancel={() => setActiveId(null)}
         modifiers={[restrictToHorizontalAxis]}
       >
-        {/* Flex wrapper so tab sortables are direct flex children with h-full (providers are not a DOM node). */}
         <div className="flex h-full min-h-0 min-w-0 items-stretch">
           <SortableContext
-            items={tabs.map(t => t.channelId)}
+            items={tabs.map(t => t.id)}
             strategy={horizontalListSortingStrategy}
           >
             {tabs.map((tab, index) => (
-              <SortableChannelTab
-                key={tab.channelId}
+              <SortableTab
+                key={tab.id}
                 tab={tab}
                 isFirst={index === 0}
-                isActive={pathname === `/analysis/${tab.channelId}`}
+                isActive={
+                  tab.type === 'channel'
+                    ? pathname === `/analysis/${tab.channelId}`
+                    : pathname === `/analysis/compare/${tab.id}`
+                }
                 onRemove={handleRemove}
+                pathname={pathname}
               />
             ))}
           </SortableContext>
         </div>
+        {showPendingChannelTab && pendingChannelId && (
+          <PendingChannelTabSkeleton
+            isActive={pathname === `/analysis/${pendingChannelId}`}
+          />
+        )}
         <DragOverlay dropAnimation={null}>
           {activeTab ? (
             <TabContent
               tab={activeTab}
-              isActive={pathname === `/analysis/${activeTab.channelId}`}
+              isActive={
+                activeTab.type === 'channel'
+                  ? pathname === `/analysis/${activeTab.channelId}`
+                  : pathname === `/analysis/compare/${activeTab.id}`
+              }
               isDragOverlay
             />
           ) : null}
         </DragOverlay>
       </DndContext>
 
-      {/* Compare tab — only when 2+ tabs */}
-      {tabs.length >= 2 && (
-        <Link
-          href={`/analysis/compare?a=${tabs[0].channelId}&b=${tabs[1].channelId}${tabs[2] ? `&c=${tabs[2].channelId}` : ''}`}
-          className="-ml-px flex h-full min-h-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5 text-xs font-medium transition-all duration-150"
-          style={pathname === '/analysis/compare' ? {
-            background: 'var(--accent)',
-            color: '#ffffff',
-            borderColor: 'var(--border)',
-          } : {
+      {/* New comparison button — only when 2+ channel tabs */}
+      {channelTabs.length >= 2 && (
+        <button
+          onClick={handleNewComparison}
+          className="-ml-px flex h-full min-h-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5 text-xs font-medium transition-all duration-150 cursor-pointer"
+          style={{
             background: 'var(--accent-subtle)',
             color: 'var(--accent-text)',
             borderColor: 'var(--border)',
           }}
-          onMouseEnter={(e) => {
-            if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '0.8'
-          }}
-          onMouseLeave={(e) => {
-            if (pathname !== '/analysis/compare') e.currentTarget.style.opacity = '1'
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
         >
           <GitCompare size={15} />
-          Compare
-        </Link>
+          New Comparison
+        </button>
       )}
 
       {/* Add channel button */}
@@ -154,8 +198,9 @@ export function ChannelTabBar() {
   )
 }
 
-/** Visual content of a tab — used both in-place and inside DragOverlay */
-function TabContent({
+/* ─── Channel tab content ─── */
+
+function ChannelTabContent({
   tab,
   isActive,
   isFirst,
@@ -165,9 +210,8 @@ function TabContent({
 }: {
   tab: ChannelTab
   isActive: boolean
-  /** Flush left edge of the tab bar (no horizontal inset) */
   isFirst?: boolean
-  onRemove?: (channelId: string) => void
+  onRemove?: (id: string) => void
   isDragOverlay?: boolean
   listeners?: Record<string, unknown>
 }) {
@@ -215,7 +259,7 @@ function TabContent({
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            onRemove?.(tab.channelId)
+            onRemove?.(tab.id)
           }}
           onPointerDown={(e) => e.stopPropagation()}
           className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
@@ -228,16 +272,140 @@ function TabContent({
   )
 }
 
-function SortableChannelTab({
+/* ─── Comparison tab content ─── */
+
+function ComparisonTabContent({
+  tab,
+  isActive,
+  isFirst,
+  onRemove,
+  isDragOverlay,
+  listeners,
+}: {
+  tab: ComparisonTab
+  isActive: boolean
+  isFirst?: boolean
+  onRemove?: (id: string) => void
+  isDragOverlay?: boolean
+  listeners?: Record<string, unknown>
+}) {
+  return (
+    <div
+      className={`group relative box-border flex h-full min-h-0 min-w-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5 text-xs font-medium ${isFirst ? 'border-l-0' : ''}`}
+      style={{
+        background: isActive ? 'var(--bg-app)' : isDragOverlay ? 'var(--bg-card)' : 'transparent',
+        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+        borderColor: 'var(--border)',
+        boxShadow: isActive ? 'inset 0 -2px 0 0 var(--accent)' : undefined,
+        cursor: isDragOverlay ? 'grabbing' : 'grab',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive && !isDragOverlay) e.currentTarget.style.background = 'var(--bg-app)'
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive && !isDragOverlay) e.currentTarget.style.background = 'transparent'
+      }}
+      {...(listeners ?? {})}
+    >
+      <Link
+        href={`/analysis/compare/${tab.id}`}
+        className="flex items-center gap-1.5"
+        onClick={(e) => { if (isDragOverlay) e.preventDefault() }}
+      >
+        {/* Stacked avatars */}
+        <div className="flex -space-x-1.5 shrink-0">
+          {tab.channels.slice(0, 3).map((ch, i) => (
+            <Avatar key={ch.channelId} className="h-5 w-5 border" style={{ borderColor: 'var(--bg-card)', zIndex: 3 - i }}>
+              <AvatarImage src={ch.thumbnailUrl} alt={ch.title} />
+              <AvatarFallback
+                style={{
+                  background: 'var(--accent-subtle)',
+                  color: 'var(--accent-text)',
+                  fontSize: '7px',
+                }}
+              >
+                {ch.title.slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+        </div>
+        <span className="truncate max-w-[18ch]">
+          {tab.name}
+        </span>
+      </Link>
+      {!isDragOverlay && (
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onRemove?.(tab.id)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* ─── Unified tab content renderer ─── */
+
+function TabContent({
+  tab,
+  isActive,
+  isFirst,
+  onRemove,
+  isDragOverlay,
+  listeners,
+}: {
+  tab: Tab
+  isActive: boolean
+  isFirst?: boolean
+  onRemove?: (id: string) => void
+  isDragOverlay?: boolean
+  listeners?: Record<string, unknown>
+}) {
+  if (tab.type === 'comparison') {
+    return (
+      <ComparisonTabContent
+        tab={tab}
+        isActive={isActive}
+        isFirst={isFirst}
+        onRemove={onRemove}
+        isDragOverlay={isDragOverlay}
+        listeners={listeners}
+      />
+    )
+  }
+  return (
+    <ChannelTabContent
+      tab={tab}
+      isActive={isActive}
+      isFirst={isFirst}
+      onRemove={onRemove}
+      isDragOverlay={isDragOverlay}
+      listeners={listeners}
+    />
+  )
+}
+
+/* ─── Sortable wrapper ─── */
+
+function SortableTab({
   tab,
   isFirst,
   isActive,
   onRemove,
+  pathname,
 }: {
-  tab: ChannelTab
+  tab: Tab
   isFirst: boolean
   isActive: boolean
-  onRemove: (channelId: string) => void
+  onRemove: (id: string) => void
+  pathname: string
 }) {
   const {
     attributes,
@@ -246,10 +414,8 @@ function SortableChannelTab({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: tab.channelId })
+  } = useSortable({ id: tab.id })
 
-  // The dragged item is hidden (DragOverlay renders the visible clone).
-  // Non-dragging items get a smooth slide transition as they reorder.
   const style: React.CSSProperties = {
     transform: transform
       ? `translate3d(${transform.x}px, 0px, 0)`
@@ -279,6 +445,28 @@ function SortableChannelTab({
     </div>
   )
 }
+
+/* ─── Pending channel skeleton ─── */
+
+function PendingChannelTabSkeleton({ isActive }: { isActive: boolean }) {
+  return (
+    <div
+      className="-ml-px flex h-full min-h-0 shrink-0 items-center gap-1.5 border-x border-solid border-y-0 px-3 py-2.5"
+      style={{
+        background: isActive ? 'var(--bg-app)' : 'transparent',
+        borderColor: 'var(--border)',
+        boxShadow: isActive ? 'inset 0 -2px 0 0 var(--accent)' : undefined,
+      }}
+      aria-busy
+      aria-label="Loading channel"
+    >
+      <Skeleton className="h-5 w-5 shrink-0 rounded-full" />
+      <Skeleton className="h-3 w-[14ch] max-w-[18ch] rounded-md" />
+    </div>
+  )
+}
+
+/* ─── Add channel popover ─── */
 
 function AddChannelPopover({
   isFirst,
@@ -311,7 +499,6 @@ function AddChannelPopover({
         return
       }
 
-      // Pre-populate cache so navigation is instant
       channelCache.set(data.channel.id, {
         channel: data.channel,
         videos: data.videos,

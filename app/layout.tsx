@@ -18,6 +18,7 @@ import { SavedComparisonsProvider } from "@/lib/context/SavedComparisonsContext"
 import { GlobalKeyboardShortcuts } from "@/components/layout/GlobalKeyboardShortcuts";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import UserButton from "@/components/auth/UserButton";
+import { ChannelTabBarWrapper } from "@/components/layout/ChannelTabBarWrapper";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -87,6 +88,7 @@ export default async function RootLayout({
                                   <UserButton />
                                 </div>
                               </header>
+                              <ChannelTabBarWrapper />
                               <main className="flex min-h-0 flex-1 flex-col gap-6 py-6 px-0">
                                 {children}
                               </main>

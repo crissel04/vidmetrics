@@ -10,12 +10,17 @@ import { HeroBackground } from '@/components/layout/HeroBackground'
 import { VidMetricsLogo } from '@/components/layout/VidMetricsLogo'
 
 export default function AnalysisIndexPage() {
-  const { tabs } = useChannelTabs()
+  const { tabs, channelTabs } = useChannelTabs()
   const router = useRouter()
 
   useEffect(() => {
     if (tabs.length > 0) {
-      router.replace(`/analysis/${tabs[0].channelId}`)
+      const first = tabs[0]
+      if (first.type === 'channel') {
+        router.replace(`/analysis/${first.channelId}`)
+      } else {
+        router.replace(`/analysis/compare/${first.id}`)
+      }
     }
   }, [tabs, router])
 
