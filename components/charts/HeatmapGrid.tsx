@@ -119,13 +119,16 @@ export function HeatmapGrid({ videos, bestDay, bestTime }: HeatmapGridProps) {
         Best times to post (based on top performing videos)
       </h3>
 
-      <div
-        className="w-full min-w-0 grid gap-1"
-        style={{
-          gridTemplateColumns: `2.5rem repeat(24, minmax(0, 1fr))`,
-        }}
-      >
-        {gridChildren}
+      <div className="overflow-x-auto">
+        <div
+          className="grid gap-1"
+          style={{
+            gridTemplateColumns: `2.5rem repeat(24, minmax(0, 1fr))`,
+            minWidth: '480px',
+          }}
+        >
+          {gridChildren}
+        </div>
       </div>
 
       <p className="mt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>

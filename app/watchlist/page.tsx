@@ -87,7 +87,7 @@ export default function WatchlistPage() {
 
   if (watchlist.length === 0) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-8 text-center fade-in">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 py-8 text-center fade-in sm:px-6">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{ background: 'var(--bg-app)' }}
@@ -119,7 +119,7 @@ export default function WatchlistPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 pt-2 fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-4 pt-2 sm:px-6 fade-in">
       {!user && (
         <>
           <div

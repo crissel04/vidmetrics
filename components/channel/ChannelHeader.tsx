@@ -51,7 +51,7 @@ export function ChannelHeader({ channel, onShare, shareButton }: ChannelHeaderPr
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
               <StatPill label="Subscribers" value={formatNumber(channel.subscriberCount)} hidden={channel.hiddenSubscriberCount} />
               <StatPill label="Videos" value={formatNumber(channel.videoCount)} />
               <StatPill label="Total views" value={formatNumber(channel.viewCount)} />

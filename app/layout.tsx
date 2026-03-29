@@ -89,7 +89,7 @@ export default async function RootLayout({
                                 </div>
                               </header>
                               <ChannelTabBarWrapper />
-                              <main className="flex min-h-0 flex-1 flex-col gap-6 py-6 px-0">
+                              <main className="flex min-h-0 flex-1 flex-col gap-4 py-4 px-0 sm:gap-6 sm:py-6">
                                 {children}
                               </main>
                             </SidebarInset>

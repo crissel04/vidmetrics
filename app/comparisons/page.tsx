@@ -50,7 +50,7 @@ export default function ComparisonsPage() {
 
   if (!user) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-8 text-center fade-in">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 py-8 text-center fade-in sm:px-6">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{ background: 'var(--bg-app)' }}
@@ -83,7 +83,7 @@ export default function ComparisonsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-[1280px] space-y-4 px-6">
+      <div className="mx-auto w-full max-w-[1280px] space-y-4 px-4 sm:px-6">
         {[1, 2, 3].map(i => (
           <Skeleton key={i} className="h-[100px] w-full rounded-xl" />
         ))}
@@ -93,7 +93,7 @@ export default function ComparisonsPage() {
 
   if (comparisons.length === 0) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-8 text-center fade-in">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 py-8 text-center fade-in sm:px-6">
         <div
           className="w-12 h-12 rounded-full flex items-center justify-center"
           style={{ background: 'var(--bg-app)' }}
@@ -117,7 +117,7 @@ export default function ComparisonsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 pt-2 fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-4 pt-2 sm:px-6 fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1

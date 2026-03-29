@@ -77,7 +77,7 @@ function ReportLandingPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-6 pt-2 fade-in">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-4 pt-2 sm:px-6 fade-in">
       {!user && (
         <>
           <div

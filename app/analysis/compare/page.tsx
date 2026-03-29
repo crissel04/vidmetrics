@@ -244,7 +244,7 @@ export function ComparePageContent({
 
   if (error && !data) {
     return (
-      <div className="mx-auto w-full max-w-[1280px] px-6 pt-6">
+      <div className="mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 sm:pt-6">
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <p style={{ color: 'var(--red-text)' }}>{error}</p>
         </div>
@@ -254,14 +254,14 @@ export function ComparePageContent({
 
   if (!data && loading) {
     return (
-      <div className="mx-auto w-full max-w-[1280px] px-6 pt-6">
+      <div className="mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 sm:pt-6">
         <CompareLoadingSkeleton />
       </div>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-6 pt-6 fade-in">
+    <div className="mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 sm:pt-6 fade-in">
       <div className="flex flex-col gap-8">
       {user && channels.length >= 2 && (
         <div className="flex justify-end">
@@ -515,7 +515,7 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
   const is3 = channels.length === 3
 
   return (
-    <Card className="shadow-none overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
+    <Card className="shadow-none" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}>
       <CardHeader className="pb-3">
         <CardTitle
           className="text-sm font-semibold"
@@ -529,10 +529,10 @@ function ScorecardTable({ channels }: { channels: ChannelData[] }) {
       </CardHeader>
       <CardContent className="pt-0">
         <div
-          className="overflow-hidden rounded-md"
+          className="overflow-x-auto rounded-md"
           style={{ border: '1px solid var(--border-subtle)' }}
         >
-          <Table className="border-separate border-spacing-0">
+          <Table className="border-separate border-spacing-0 min-w-[400px]">
             <TableHeader className="[&_tr]:border-b-0">
               <TableRow
                 className="border-0 border-b border-solid hover:bg-transparent"
@@ -1060,8 +1060,8 @@ function ContentStrategySection({ channels }: { channels: ChannelData[] }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="overflow-hidden rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
-          <Table className="border-separate border-spacing-0">
+        <div className="overflow-x-auto rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
+          <Table className="border-separate border-spacing-0 min-w-[400px]">
             <TableHeader className="[&_tr]:border-b-0">
               <TableRow
                 className="border-0 border-b border-solid hover:bg-transparent"
@@ -1165,8 +1165,8 @@ function EngagementQualitySection({ channels }: { channels: ChannelData[] }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="overflow-hidden rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
-          <Table className="border-separate border-spacing-0">
+        <div className="overflow-x-auto rounded-md" style={{ border: '1px solid var(--border-subtle)' }}>
+          <Table className="border-separate border-spacing-0 min-w-[400px]">
             <TableHeader className="[&_tr]:border-b-0">
               <TableRow
                 className="border-0 border-b border-solid hover:bg-transparent"
@@ -1604,7 +1604,7 @@ function CompareEmptyState({ compareTabId }: { compareTabId?: string }) {
             >
               Available channels
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {allChannels.map(ch => {
                 const selected = selectedIds.includes(ch.channelId)
                 return (

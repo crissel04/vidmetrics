@@ -240,7 +240,7 @@ export function ChannelAnalysisView({
                   ))}
                 </div>
 
-                <div className="relative min-w-[200px] flex-1">
+                <div className="relative min-w-[140px] flex-1">
                   <Search
                     size={14}
                     className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"

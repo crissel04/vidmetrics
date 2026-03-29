@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 /** Content width only — sidebar + top bar come from root layout (no duplicate in-page header). */
 export default function ReportLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-6">
+    <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6">
       {children}
     </div>
   )

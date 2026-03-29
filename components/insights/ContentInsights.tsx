@@ -71,10 +71,10 @@ export function ContentInsights({ videos, metrics }: ContentInsightsProps) {
           </CardHeader>
           <CardContent className="pb-4 pt-0">
             <div
-              className="overflow-hidden rounded-md"
+              className="overflow-x-auto rounded-md"
               style={{ border: '1px solid var(--border-subtle)' }}
             >
-              <Table className="border-separate border-spacing-0">
+              <Table className="border-separate border-spacing-0 min-w-[400px]">
                 <TableHeader className="[&_tr]:border-b-0">
                   <TableRow
                     className="border-0 border-b border-solid hover:bg-transparent"

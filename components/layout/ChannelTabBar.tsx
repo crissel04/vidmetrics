@@ -192,7 +192,7 @@ export function ChannelTabBar() {
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
         >
           <GitCompare size={15} />
-          New Comparison
+          <span className="hidden sm:inline">New Comparison</span>
         </button>
       )}
     </div>
@@ -263,7 +263,7 @@ function ChannelTabContent({
             onRemove?.(tab.id)
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-60 transition-opacity duration-150"
           style={{ color: 'var(--text-muted)' }}
         >
           <X size={12} />
@@ -342,7 +342,7 @@ function ComparisonTabContent({
             onRemove?.(tab.id)
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+          className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-60 transition-opacity duration-150"
           style={{ color: 'var(--text-muted)' }}
         >
           <X size={12} />
