@@ -22,44 +22,54 @@ interface SelectedChannel {
 
 interface ChannelSelectorProps {
   channels: SelectedChannel[]
+  compareTabId?: string
 }
 
-export function ChannelSelector({ channels }: ChannelSelectorProps) {
+export function ChannelSelector({ channels, compareTabId }: ChannelSelectorProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const selectedIds = [
-    searchParams.get('a'),
-    searchParams.get('b'),
-    searchParams.get('c'),
-  ].filter(Boolean) as string[]
+  const { updateComparisonTab, comparisonTabs } = useChannelTabs()
+
+  const selectedIds = channels.map(ch => ch.channelId)
 
   const handleRemove = (channelId: string) => {
-    const remaining = selectedIds.filter(id => id !== channelId)
-    if (remaining.length < 2) {
-      toast('Add at least two channels to compare')
-      router.replace('/')
-      return
+    const remaining = channels.filter(ch => ch.channelId !== channelId)
+
+    if (compareTabId) {
+      // Update the comparison tab — the parent component will re-render with new channelIds
+      updateComparisonTab(compareTabId, { channels: remaining })
+    } else {
+      if (remaining.length < 2) {
+        toast('Add at least two channels to compare')
+        router.replace('/')
+        return
+      }
+      const params = new URLSearchParams()
+      remaining.forEach((ch, i) => {
+        params.set(['a', 'b', 'c'][i], ch.channelId)
+      })
+      router.replace(`/analysis/compare?${params.toString()}`)
     }
-    const params = new URLSearchParams()
-    remaining.forEach((id, i) => {
-      const key = ['a', 'b', 'c'][i]
-      params.set(key, id)
-    })
-    router.replace(`/analysis/compare?${params.toString()}`)
   }
 
-  const handleAdd = (channelId: string) => {
+  const handleAdd = (channelId: string, channelData?: SelectedChannel) => {
     if (selectedIds.length >= 3) return
     if (selectedIds.includes(channelId)) {
       toast('This channel is already in the comparison')
       return
     }
-    const params = new URLSearchParams()
-    ;[...selectedIds, channelId].forEach((id, i) => {
-      const key = ['a', 'b', 'c'][i]
-      params.set(key, id)
-    })
-    router.replace(`/analysis/compare?${params.toString()}`)
+
+    if (compareTabId) {
+      const newChannel = channelData ?? { channelId, title: channelId, handle: '', thumbnailUrl: '' }
+      // Update the comparison tab — the parent component will re-render with new channelIds
+      updateComparisonTab(compareTabId, { channels: [...channels, newChannel] })
+    } else {
+      const params = new URLSearchParams()
+      ;[...selectedIds, channelId].forEach((id, i) => {
+        params.set(['a', 'b', 'c'][i], id)
+      })
+      router.replace(`/analysis/compare?${params.toString()}`)
+    }
   }
 
   const atMax = selectedIds.length >= 3
@@ -131,6 +141,7 @@ export function ChannelSelector({ channels }: ChannelSelectorProps) {
         <AddChannelPopover
           selectedIds={selectedIds}
           onAdd={handleAdd}
+          compareTabId={compareTabId}
         />
       )}
     </div>
@@ -140,21 +151,28 @@ export function ChannelSelector({ channels }: ChannelSelectorProps) {
 function AddChannelPopover({
   selectedIds,
   onAdd,
+  compareTabId,
 }: {
   selectedIds: string[]
-  onAdd: (channelId: string) => void
+  onAdd: (channelId: string, channelData?: { channelId: string; title: string; handle: string; thumbnailUrl: string }) => void
+  compareTabId?: string
 }) {
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { tabs, addTab } = useChannelTabs()
+  const { channelTabs, addTab } = useChannelTabs()
   const channelCache = useChannelCache()
 
-  const availableTabs = tabs.filter(t => !selectedIds.includes(t.channelId))
+  const availableTabs = channelTabs.filter(t => !selectedIds.includes(t.channelId))
 
   const handleSelectTab = (tab: ChannelTab) => {
-    onAdd(tab.channelId)
+    onAdd(tab.channelId, {
+      channelId: tab.channelId,
+      title: tab.title,
+      handle: tab.handle,
+      thumbnailUrl: tab.thumbnailUrl,
+    })
     setOpen(false)
   }
 
@@ -191,7 +209,12 @@ function AddChannelPopover({
         thumbnailUrl: data.channel.thumbnailUrl,
       })
 
-      onAdd(data.channel.id)
+      onAdd(data.channel.id, {
+        channelId: data.channel.id,
+        title: data.channel.title,
+        handle: data.channel.handle,
+        thumbnailUrl: data.channel.thumbnailUrl,
+      })
       setUrl('')
       setError('')
       setOpen(false)
