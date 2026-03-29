@@ -10,6 +10,9 @@ const chartConfig = {
   count: { label: 'Videos', color: 'var(--chart-1)' },
 }
 
+const axisStroke = 'var(--border-strong)'
+const tickProps = { fontSize: 12, fill: 'var(--text-secondary)' }
+
 function buildBuckets(videos: Video[]) {
   if (videos.length === 0) return []
   const sorted = [...videos].sort((a, b) => a.viewCount - b.viewCount)
@@ -39,8 +42,11 @@ export function PerformanceDistribution({ videos }: PerformanceDistributionProps
   const buckets = buildBuckets(videos)
 
   return (
-    <Card style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} className="shadow-none">
-      <CardHeader className="pb-3">
+    <Card
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+      className="shadow-none h-full min-h-0"
+    >
+      <CardHeader className="shrink-0 pb-3">
         <CardTitle
           className="text-sm font-semibold"
           style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}
@@ -51,24 +57,27 @@ export function PerformanceDistribution({ videos }: PerformanceDistributionProps
           A spread-out distribution = consistent. All bars low except one = relies on viral hits.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+      <CardContent className="flex flex-1 flex-col min-h-0 px-4 pb-4 pt-0">
+        <ChartContainer
+          config={chartConfig}
+          className="h-full min-h-[260px] w-full flex-1 aspect-auto [&_.recharts-responsive-container]:!h-full"
+        >
           <BarChart data={buckets}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={axisStroke} strokeOpacity={0.35} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-              tickLine={false}
-              axisLine={false}
+              tick={{ fontSize: 10, fill: 'var(--text-secondary)' }}
+              tickLine={{ stroke: axisStroke }}
+              axisLine={{ stroke: axisStroke }}
               interval={0}
               angle={-20}
               textAnchor="end"
               height={50}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
-              tickLine={false}
-              axisLine={false}
+              tick={tickProps}
+              tickLine={{ stroke: axisStroke }}
+              axisLine={{ stroke: axisStroke }}
               allowDecimals={false}
             />
             <ChartTooltip
@@ -87,7 +96,7 @@ export function PerformanceDistribution({ videos }: PerformanceDistributionProps
                 )
               }}
             />
-            <Bar dataKey="count" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="count" fill="var(--chart-1)" radius={[10, 10, 0, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

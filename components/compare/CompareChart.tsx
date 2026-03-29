@@ -65,8 +65,8 @@ export function CompareChart({ videosA, videosB, titleA, titleB }: CompareChartP
           <ChartTooltip
             content={<ChartTooltipContent />}
           />
-          <Bar dataKey="channelA" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="channelB" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="channelA" fill="var(--chart-1)" radius={[10, 10, 0, 0]} />
+          <Bar dataKey="channelB" fill="var(--chart-2)" radius={[10, 10, 0, 0]} />
         </BarChart>
       </ChartContainer>
     </div>

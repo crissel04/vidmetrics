@@ -8,6 +8,9 @@ const chartConfig = {
   engagement: { label: 'Engagement Rate', color: 'var(--chart-1)' },
 }
 
+const axisStroke = 'var(--border-strong)'
+const tickProps = { fontSize: 12, fill: 'var(--text-secondary)' }
+
 interface EngagementChartProps {
   videos: Video[]
   avgEngagementRate: number
@@ -30,17 +33,17 @@ export function EngagementChart({ videos, avgEngagementRate }: EngagementChartPr
       </h3>
       <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={axisStroke} strokeOpacity={0.35} vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
-            tickLine={false}
-            axisLine={false}
+            tick={tickProps}
+            tickLine={{ stroke: axisStroke }}
+            axisLine={{ stroke: axisStroke }}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
-            tickLine={false}
-            axisLine={false}
+            tick={tickProps}
+            tickLine={{ stroke: axisStroke }}
+            axisLine={{ stroke: axisStroke }}
             tickFormatter={(v) => `${v}%`}
           />
           <ChartTooltip
